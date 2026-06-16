@@ -17,7 +17,8 @@ const DEFAULTS = {
   botApiUrl: '',
   apiKey: 'dpgp-secret-key',
   ausenciaAtivo: false,
-  ausenciaMensagem: '',
+  ausenciaMensagens: [],
+  ausenciaDelay: 25,
 };
 
 function loadForm() {
@@ -35,7 +36,15 @@ function loadForm() {
   document.getElementById('cfg-bot-url').value        = cfg.botApiUrl || '';
   document.getElementById('cfg-api-key').value        = cfg.apiKey || 'dpgp-secret-key';
   document.getElementById('cfg-ausencia-ativo').checked = !!cfg.ausenciaAtivo;
-  document.getElementById('cfg-ausencia-msg').value   = cfg.ausenciaMensagem || '';
+  document.getElementById('cfg-ausencia-delay').value   = cfg.ausenciaDelay ?? 25;
+  const list = document.getElementById('ausencia-msgs-list');
+  list.innerHTML = '';
+  // compatibilidade com campo antigo
+  const msgs = Array.isArray(cfg.ausenciaMensagens) && cfg.ausenciaMensagens.length
+    ? cfg.ausenciaMensagens
+    : (cfg.ausenciaMensagem ? [cfg.ausenciaMensagem] : []);
+  if (msgs.length) msgs.forEach(m => addAusenciaMsg(m));
+  else addAusenciaMsg();
 
   checkDelayWarning();
 }
@@ -71,10 +80,11 @@ function saveAll() {
     timezone:        document.getElementById('cfg-timezone').value,
     delayMin,
     delayMax,
-    botApiUrl:        document.getElementById('cfg-bot-url').value.trim(),
-    apiKey:           document.getElementById('cfg-api-key').value.trim() || 'dpgp-secret-key',
-    ausenciaAtivo:    document.getElementById('cfg-ausencia-ativo').checked,
-    ausenciaMensagem: document.getElementById('cfg-ausencia-msg').value.trim(),
+    botApiUrl:         document.getElementById('cfg-bot-url').value.trim(),
+    apiKey:            document.getElementById('cfg-api-key').value.trim() || 'dpgp-secret-key',
+    ausenciaAtivo:     document.getElementById('cfg-ausencia-ativo').checked,
+    ausenciaMensagens: getAusenciaMensagens(),
+    ausenciaDelay:     parseInt(document.getElementById('cfg-ausencia-delay').value) || 25,
   };
 
   Store.saveConfig(cfg);
@@ -212,6 +222,46 @@ async function triggerDispatch() {
     setSyncStatus('❌ Falha ao conectar com o servidor.', 'var(--danger)');
     toast('Servidor não acessível.', 'error');
   }
+}
+
+// ── Mensagens de ausência (lista dinâmica) ────────────────────────────────────
+function addAusenciaMsg(value = '') {
+  const list = document.getElementById('ausencia-msgs-list');
+  const idx  = list.children.length + 1;
+
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;gap:8px;align-items:flex-start';
+
+  const ta = document.createElement('textarea');
+  ta.className   = 'form-control ausencia-msg-input';
+  ta.rows        = 3;
+  ta.placeholder = `Mensagem ${idx}...`;
+  ta.style.flex  = '1';
+  ta.value       = value;
+
+  const btn = document.createElement('button');
+  btn.type      = 'button';
+  btn.className = 'btn btn-danger btn-icon btn-sm';
+  btn.title     = 'Remover';
+  btn.style.cssText = 'margin-top:2px;flex-shrink:0';
+  btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+  btn.onclick   = () => { wrap.remove(); updateAusenciaPlaceholders(); };
+
+  wrap.appendChild(ta);
+  wrap.appendChild(btn);
+  list.appendChild(wrap);
+}
+
+function updateAusenciaPlaceholders() {
+  document.querySelectorAll('.ausencia-msg-input').forEach((ta, i) => {
+    ta.placeholder = `Mensagem ${i + 1}...`;
+  });
+}
+
+function getAusenciaMensagens() {
+  return Array.from(document.querySelectorAll('.ausencia-msg-input'))
+    .map(ta => ta.value.trim())
+    .filter(Boolean);
 }
 
 function resetDefaults() {
