@@ -48,6 +48,32 @@
         </div>
       </div>
 
+      <!-- Mensagem de Ausência -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <span class="card-title">🌙 Mensagem de Ausência</span>
+        </div>
+        <div class="form-group">
+          <label class="toggle-wrap">
+            <div class="toggle">
+              <input type="checkbox" id="cfg-ausencia-ativo">
+              <div class="toggle-track"></div>
+              <div class="toggle-thumb"></div>
+            </div>
+            <div>
+              <div style="font-size:14px;font-weight:600;color:var(--text-1)">Ativar resposta automática</div>
+              <div class="form-hint" style="margin:0">Responde automaticamente mensagens diretas recebidas no número.</div>
+            </div>
+          </label>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mensagem de ausência</label>
+          <textarea id="cfg-ausencia-msg" class="form-control" rows="4"
+            placeholder="Ex: Olá! No momento estou ausente. Retorno em breve! 😊"></textarea>
+          <div class="form-hint">Enviada uma vez por contato a cada hora. Não responde mensagens de grupos.</div>
+        </div>
+      </div>
+
       <!-- Intervalo -->
       <div class="card mb-4">
         <div class="card-header">

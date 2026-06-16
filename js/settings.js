@@ -16,6 +16,8 @@ const DEFAULTS = {
   timezone: 'America/Sao_Paulo',
   botApiUrl: '',
   apiKey: 'dpgp-secret-key',
+  ausenciaAtivo: false,
+  ausenciaMensagem: '',
 };
 
 function loadForm() {
@@ -32,6 +34,8 @@ function loadForm() {
   document.getElementById('cfg-delay-max').value      = cfg.delayMax ?? 60;
   document.getElementById('cfg-bot-url').value        = cfg.botApiUrl || '';
   document.getElementById('cfg-api-key').value        = cfg.apiKey || 'dpgp-secret-key';
+  document.getElementById('cfg-ausencia-ativo').checked = !!cfg.ausenciaAtivo;
+  document.getElementById('cfg-ausencia-msg').value   = cfg.ausenciaMensagem || '';
 
   checkDelayWarning();
 }
@@ -67,8 +71,10 @@ function saveAll() {
     timezone:        document.getElementById('cfg-timezone').value,
     delayMin,
     delayMax,
-    botApiUrl:       document.getElementById('cfg-bot-url').value.trim(),
-    apiKey:          document.getElementById('cfg-api-key').value.trim() || 'dpgp-secret-key',
+    botApiUrl:        document.getElementById('cfg-bot-url').value.trim(),
+    apiKey:           document.getElementById('cfg-api-key').value.trim() || 'dpgp-secret-key',
+    ausenciaAtivo:    document.getElementById('cfg-ausencia-ativo').checked,
+    ausenciaMensagem: document.getElementById('cfg-ausencia-msg').value.trim(),
   };
 
   Store.saveConfig(cfg);
