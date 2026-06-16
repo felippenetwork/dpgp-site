@@ -116,16 +116,21 @@ function openModal(id = null) {
     document.getElementById('tpl-name').value    = tpl.name || '';
     document.getElementById('tpl-type').value    = tpl.type;
     document.getElementById('tpl-content').value = tpl.content || '';
-    document.getElementById('tpl-media-url').value = tpl.mediaUrl || '';
-    document.getElementById('tpl-active').checked   = tpl.active;
+    document.getElementById('tpl-active').checked = tpl.active;
+    _mediaUrls = Array.isArray(tpl.mediaUrls) ? [...tpl.mediaUrls] : (tpl.mediaUrl ? [tpl.mediaUrl] : []);
+    document.getElementById('upload-idle').classList.remove('hidden');
+    document.getElementById('upload-progress').classList.add('hidden');
+    document.getElementById('upload-done').classList.add('hidden');
+    document.getElementById('tpl-media-url').value = '';
+    document.getElementById('tpl-file-input').value = '';
+    setMediaTab('upload');
     onTypeChange();
-    previewMedia();
+    renderMediaList();
     updateCharCount();
   } else {
     document.getElementById('tpl-name').value      = '';
     document.getElementById('tpl-type').value      = 'text';
     document.getElementById('tpl-content').value   = '';
-    document.getElementById('tpl-media-url').value = '';
     document.getElementById('tpl-active').checked  = true;
     resetUploadArea();
     onTypeChange();
@@ -143,6 +148,51 @@ function closeModalBackdrop(e) {
   if (e.target === document.getElementById('modal-backdrop')) closeModal();
 }
 
+// ── Lista de mídias ──
+let _mediaUrls = [];
+
+function renderMediaList() {
+  const list = document.getElementById('media-list');
+  const type = document.getElementById('tpl-type').value;
+  if (!_mediaUrls.length) { list.innerHTML = ''; return; }
+
+  list.innerHTML = _mediaUrls.map((url, i) => {
+    const thumb = type === 'image'
+      ? `<img src="${escHtml(url)}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;flex-shrink:0" onerror="this.style.display='none'">`
+      : type === 'video'
+      ? `<div style="width:60px;height:60px;background:var(--bg-hover);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🎬</div>`
+      : `<div style="width:60px;height:60px;background:var(--bg-hover);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🎵</div>`;
+
+    const label = url.split('/').pop().split('?')[0] || url;
+
+    return `<div style="display:flex;align-items:center;gap:10px;background:var(--bg-hover);border-radius:8px;padding:8px 10px">
+      ${thumb}
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(label)}</div>
+        ${i === 0 ? '<div style="font-size:11px;color:var(--accent);margin-top:2px">Principal</div>' : ''}
+      </div>
+      <button type="button" class="btn btn-danger btn-icon btn-sm" title="Remover" onclick="removeMedia(${i})" style="flex-shrink:0">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>`;
+  }).join('');
+}
+
+function removeMedia(i) {
+  _mediaUrls.splice(i, 1);
+  renderMediaList();
+}
+
+function addMediaUrl() {
+  const input = document.getElementById('tpl-media-url');
+  const url = input.value.trim();
+  if (!url) { toast('Digite uma URL válida.', 'warning'); return; }
+  _mediaUrls.push(url);
+  input.value = '';
+  renderMediaList();
+  toast('Mídia adicionada.', 'success');
+}
+
 // ── Upload de mídia ──
 function setMediaTab(tab) {
   const isUpload = tab === 'upload';
@@ -152,7 +202,6 @@ function setMediaTab(tab) {
   document.getElementById('tab-url').className    = isUpload ? 'btn btn-ghost btn-sm'     : 'btn btn-secondary btn-sm';
   document.getElementById('tab-upload').style.flex = '1';
   document.getElementById('tab-url').style.flex    = '1';
-  if (!isUpload) previewMedia();
 }
 
 function handleFileDrop(e) {
@@ -162,7 +211,7 @@ function handleFileDrop(e) {
   if (file) handleFileSelect(file);
 }
 
-const UPLOAD_CHUNK_SIZE = 500 * 1024; // 500KB de base64 por chunk (bem abaixo do limite nginx)
+const UPLOAD_CHUNK_SIZE = 500 * 1024;
 
 async function handleFileSelect(file) {
   if (!file) return;
@@ -189,20 +238,16 @@ async function handleFileSelect(file) {
       'X-Api-Key':    cfg.apiKey || 'dpgp-secret-key',
     };
 
-    // 1. inicia o upload
     progress.textContent = '⏳ Iniciando...';
     const startRes  = await fetch(`${apiUrl}/api/upload/start`, { method: 'POST', headers, body: '{}' });
     const startData = await startRes.json();
     if (!startData.success) throw new Error(startData.error || 'Falha ao iniciar upload');
     const { uploadId } = startData;
 
-    // 2. envia chunks de 500KB
     const total = Math.ceil(base64.length / UPLOAD_CHUNK_SIZE);
     for (let i = 0; i < total; i++) {
-      const chunk    = base64.slice(i * UPLOAD_CHUNK_SIZE, (i + 1) * UPLOAD_CHUNK_SIZE);
-      const pct      = Math.round((i + 1) / total * 90);
-      progress.textContent = `⏳ Enviando... ${pct}%`;
-
+      const chunk = base64.slice(i * UPLOAD_CHUNK_SIZE, (i + 1) * UPLOAD_CHUNK_SIZE);
+      progress.textContent = `⏳ Enviando... ${Math.round((i + 1) / total * 90)}%`;
       const chunkRes  = await fetch(`${apiUrl}/api/upload/chunk`, {
         method: 'POST', headers,
         body: JSON.stringify({ uploadId, index: i, data: chunk }),
@@ -211,7 +256,6 @@ async function handleFileSelect(file) {
       if (!chunkData.success) throw new Error(chunkData.error || `Falha no chunk ${i}`);
     }
 
-    // 3. finaliza e monta o arquivo
     progress.textContent = '⏳ Finalizando...';
     const finishRes  = await fetch(`${apiUrl}/api/upload/finish`, {
       method: 'POST', headers,
@@ -220,12 +264,14 @@ async function handleFileSelect(file) {
     const finishData = await finishRes.json();
     if (!finishData.success) throw new Error(finishData.error || 'Falha ao finalizar upload');
 
-    document.getElementById('tpl-media-url').value = finishData.url;
+    _mediaUrls.push(finishData.url);
+    renderMediaList();
+
     progress.classList.add('hidden');
     document.getElementById('upload-done').classList.remove('hidden');
     document.getElementById('upload-done').textContent = `✅ ${file.name} enviado`;
-    previewMedia();
-    toast('Arquivo enviado com sucesso!', 'success');
+    document.getElementById('tpl-file-input').value = '';
+    toast('Arquivo enviado!', 'success');
   } catch (err) {
     progress.classList.add('hidden');
     document.getElementById('upload-idle').classList.remove('hidden');
@@ -234,10 +280,13 @@ async function handleFileSelect(file) {
 }
 
 function resetUploadArea() {
+  _mediaUrls = [];
+  document.getElementById('media-list').innerHTML = '';
   document.getElementById('upload-idle').classList.remove('hidden');
   document.getElementById('upload-progress').classList.add('hidden');
   document.getElementById('upload-done').classList.add('hidden');
   document.getElementById('tpl-file-input').value = '';
+  document.getElementById('tpl-media-url').value = '';
   setMediaTab('upload');
 }
 
@@ -252,23 +301,7 @@ function onTypeChange() {
   } else {
     mediaSection.classList.remove('hidden');
     contentLabel.textContent = 'Legenda (opcional)';
-  }
-}
-
-function previewMedia() {
-  const url  = document.getElementById('tpl-media-url').value.trim();
-  const type = document.getElementById('tpl-type').value;
-  const wrap = document.getElementById('media-preview-wrap');
-
-  if (!url) { wrap.classList.add('hidden'); wrap.innerHTML = ''; return; }
-
-  wrap.classList.remove('hidden');
-  if (type === 'image') {
-    wrap.innerHTML = `<img src="${escHtml(url)}" alt="preview" style="max-height:200px;object-fit:cover;width:100%">`;
-  } else if (type === 'video') {
-    wrap.innerHTML = `<video src="${escHtml(url)}" controls style="max-height:200px;width:100%"></video>`;
-  } else if (type === 'audio') {
-    wrap.innerHTML = `<audio src="${escHtml(url)}" controls style="width:100%;margin-top:8px"></audio>`;
+    renderMediaList();
   }
 }
 
@@ -282,19 +315,22 @@ async function saveTemplate() {
   const name    = document.getElementById('tpl-name').value.trim();
   const type    = document.getElementById('tpl-type').value;
   const content = document.getElementById('tpl-content').value.trim();
-  const mediaUrl = document.getElementById('tpl-media-url').value.trim();
   const active  = document.getElementById('tpl-active').checked;
 
   if (type === 'text' && !content) { toast('Digite o conteúdo da mensagem.', 'warning'); return; }
+  if (type !== 'text' && !_mediaUrls.length) { toast('Adicione pelo menos uma mídia.', 'warning'); return; }
+
+  const mediaUrls = [..._mediaUrls];
+  const mediaUrl  = mediaUrls[0] || '';
 
   const btn = document.getElementById('modal-save-btn');
   btn.disabled = true;
   try {
     if (id) {
-      await Store.updateTemplate(id, { name, type, content, mediaUrl, active });
+      await Store.updateTemplate(id, { name, type, content, mediaUrls, mediaUrl, active });
       toast('Template atualizado!', 'success');
     } else {
-      await Store.addTemplate({ name, type, content, mediaUrl, active });
+      await Store.addTemplate({ name, type, content, mediaUrls, mediaUrl, active });
       toast('Template criado!', 'success');
     }
     closeModal();

@@ -183,24 +183,16 @@
         </div>
       </div>
 
-      <!-- Sync -->
+      <!-- Ações do Bot -->
       <div class="card mb-4" style="border-color:rgba(37,211,102,.2)">
         <div class="card-header">
-          <span class="card-title" style="color:var(--accent)">🔄 Sincronizar com o Bot</span>
+          <span class="card-title" style="color:var(--accent)">🎯 Ações do Bot</span>
         </div>
         <p style="font-size:13.5px;color:var(--text-2);margin-bottom:16px">
-          Envie todos os templates, grupos e configurações para o servidor bot. Faça isso sempre que alterar algo no site.
+          O bot lê templates, grupos e configurações diretamente do banco de dados — não é necessário sincronizar. Use o botão abaixo para disparar manualmente.
         </p>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
-          <button class="btn btn-primary" onclick="syncToBot()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
-            Enviar para o bot
-          </button>
-          <button class="btn btn-secondary" onclick="pullHistory()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
-            Importar histórico do bot
-          </button>
-          <button class="btn btn-secondary" onclick="triggerDispatch()">
+          <button class="btn btn-primary" onclick="triggerDispatch()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><polygon points="5 3 19 12 5 21 5 3"/></svg>
             Disparar agora
           </button>
