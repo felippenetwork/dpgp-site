@@ -15,7 +15,7 @@ function renderGrid() {
 
   let list = Store.getTemplates();
 
-  if (query)           list = list.filter(t => (t.content || '').toLowerCase().includes(query) || (t.mediaName || '').toLowerCase().includes(query));
+  if (query)           list = list.filter(t => (t.name || '').toLowerCase().includes(query) || (t.content || '').toLowerCase().includes(query) || (t.mediaName || '').toLowerCase().includes(query));
   if (fType)           list = list.filter(t => t.type === fType);
   if (fStat === 'active')   list = list.filter(t => t.active);
   if (fStat === 'inactive') list = list.filter(t => !t.active);
@@ -55,6 +55,7 @@ function cardHTML(t) {
           <span class="${badgeClass}">${TYPE_ICONS[t.type]} ${TYPE_LABELS[t.type]}</span>
           <span class="template-id">#${t.id.slice(-6)}</span>
         </div>
+        ${t.name ? `<div style="font-size:14px;font-weight:700;color:var(--text-1);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(t.name)}</div>` : ''}
         <div class="template-content">
           ${t.content ? escHtml(t.content) : '<span style="color:var(--text-3);font-style:italic">Sem legenda</span>'}
         </div>
@@ -112,6 +113,7 @@ function openModal(id = null) {
   if (isEdit) {
     const tpl = Store.getTemplates().find(t => t.id === id);
     if (!tpl) return;
+    document.getElementById('tpl-name').value    = tpl.name || '';
     document.getElementById('tpl-type').value    = tpl.type;
     document.getElementById('tpl-content').value = tpl.content || '';
     document.getElementById('tpl-media-url').value = tpl.mediaUrl || '';
@@ -120,6 +122,7 @@ function openModal(id = null) {
     previewMedia();
     updateCharCount();
   } else {
+    document.getElementById('tpl-name').value      = '';
     document.getElementById('tpl-type').value      = 'text';
     document.getElementById('tpl-content').value   = '';
     document.getElementById('tpl-media-url').value = '';
@@ -177,6 +180,7 @@ function updateCharCount() {
 
 function saveTemplate() {
   const id      = document.getElementById('edit-id').value;
+  const name    = document.getElementById('tpl-name').value.trim();
   const type    = document.getElementById('tpl-type').value;
   const content = document.getElementById('tpl-content').value.trim();
   const mediaUrl = document.getElementById('tpl-media-url').value.trim();
@@ -188,10 +192,10 @@ function saveTemplate() {
   }
 
   if (id) {
-    Store.updateTemplate(id, { type, content, mediaUrl, active });
+    Store.updateTemplate(id, { name, type, content, mediaUrl, active });
     toast('Template atualizado!', 'success');
   } else {
-    Store.addTemplate({ type, content, mediaUrl, active });
+    Store.addTemplate({ name, type, content, mediaUrl, active });
     toast('Template criado!', 'success');
   }
 
@@ -218,7 +222,7 @@ function viewTemplate(id) {
   const tpl = Store.getTemplates().find(t => t.id === id);
   if (!tpl) return;
 
-  document.getElementById('view-title').textContent = `${TYPE_ICONS[tpl.type]} Template — ${TYPE_LABELS[tpl.type]}`;
+  document.getElementById('view-title').textContent = tpl.name ? `${tpl.name}` : `${TYPE_ICONS[tpl.type]} Template — ${TYPE_LABELS[tpl.type]}`;
   document.getElementById('view-edit-btn').onclick = () => { closeView(); openModal(id); };
 
   let html = '';
