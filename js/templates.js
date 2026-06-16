@@ -127,6 +127,7 @@ function openModal(id = null) {
     document.getElementById('tpl-content').value   = '';
     document.getElementById('tpl-media-url').value = '';
     document.getElementById('tpl-active').checked  = true;
+    resetUploadArea();
     onTypeChange();
     updateCharCount();
   }
@@ -140,6 +141,69 @@ function closeModal() {
 
 function closeModalBackdrop(e) {
   if (e.target === document.getElementById('modal-backdrop')) closeModal();
+}
+
+// ── Upload de mídia ──
+function setMediaTab(tab) {
+  const isUpload = tab === 'upload';
+  document.getElementById('media-tab-upload').classList.toggle('hidden', !isUpload);
+  document.getElementById('media-tab-url').classList.toggle('hidden', isUpload);
+  document.getElementById('tab-upload').className = isUpload ? 'btn btn-secondary btn-sm' : 'btn btn-ghost btn-sm';
+  document.getElementById('tab-url').className    = isUpload ? 'btn btn-ghost btn-sm'     : 'btn btn-secondary btn-sm';
+  document.getElementById('tab-upload').style.flex = '1';
+  document.getElementById('tab-url').style.flex    = '1';
+  if (!isUpload) previewMedia();
+}
+
+function handleFileDrop(e) {
+  e.preventDefault();
+  document.getElementById('upload-drop-area').style.borderColor = 'var(--border)';
+  const file = e.dataTransfer.files[0];
+  if (file) handleFileSelect(file);
+}
+
+async function handleFileSelect(file) {
+  if (!file) return;
+  const cfg = Store.getConfig();
+  const url = (cfg.botApiUrl || '').replace(/\/$/, '');
+  if (!url) { toast('Configure a URL do servidor nas Configurações.', 'warning'); return; }
+
+  document.getElementById('upload-idle').classList.add('hidden');
+  document.getElementById('upload-done').classList.add('hidden');
+  document.getElementById('upload-progress').classList.remove('hidden');
+
+  try {
+    const form = new FormData();
+    form.append('file', file);
+
+    const res  = await fetch(`${url}/api/upload`, {
+      method:  'POST',
+      headers: { 'X-Api-Key': cfg.apiKey || 'dpgp-secret-key' },
+      body:    form,
+    });
+    const data = await res.json();
+
+    if (!data.success) throw new Error(data.error);
+
+    document.getElementById('tpl-media-url').value = data.url;
+    document.getElementById('upload-progress').classList.add('hidden');
+    document.getElementById('upload-done').classList.remove('hidden');
+    document.getElementById('upload-done').textContent = `✅ ${file.name} enviado`;
+    previewMedia();
+    toast('Arquivo enviado com sucesso!', 'success');
+  } catch (err) {
+    document.getElementById('upload-progress').classList.add('hidden');
+    document.getElementById('upload-idle').classList.remove('hidden');
+    toast('Erro ao enviar: ' + err.message, 'error');
+  }
+}
+
+function resetUploadArea() {
+  document.getElementById('upload-idle').classList.remove('hidden');
+  document.getElementById('upload-progress').classList.add('hidden');
+  document.getElementById('upload-done').classList.add('hidden');
+  document.getElementById('tpl-file-input').value = '';
+  setMediaTab('upload');
 }
 
 function onTypeChange() {

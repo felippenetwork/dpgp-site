@@ -79,12 +79,32 @@
         </select>
       </div>
 
-      <!-- Media URL field (image/video/audio) -->
+      <!-- Media field (image/video/audio) -->
       <div id="media-section" class="hidden">
         <div class="form-group">
-          <label class="form-label">URL da mídia <span style="color:var(--text-3);font-weight:400">(link público da imagem/vídeo/áudio)</span></label>
-          <input type="url" id="tpl-media-url" class="form-control" placeholder="https://exemplo.com/imagem.jpg" oninput="previewMedia()">
-          <div class="form-hint">Use links de CDN, Google Drive (modo público), Cloudinary, etc.</div>
+          <label class="form-label">Mídia</label>
+          <div style="display:flex;gap:8px;margin-bottom:10px">
+            <button type="button" class="btn btn-secondary btn-sm" id="tab-upload" onclick="setMediaTab('upload')" style="flex:1">📁 Enviar arquivo</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="tab-url" onclick="setMediaTab('url')" style="flex:1">🔗 Usar URL</button>
+          </div>
+
+          <div id="media-tab-upload">
+            <div id="upload-drop-area" style="border:2px dashed var(--border);border-radius:var(--radius-sm);padding:24px;text-align:center;cursor:pointer;transition:border-color .2s" onclick="document.getElementById('tpl-file-input').click()" ondragover="event.preventDefault();this.style.borderColor='var(--accent)'" ondragleave="this.style.borderColor='var(--border)'" ondrop="handleFileDrop(event)">
+              <input type="file" id="tpl-file-input" accept="image/*,video/*,audio/*" style="display:none" onchange="handleFileSelect(this.files[0])">
+              <div id="upload-idle">
+                <div style="font-size:28px;margin-bottom:8px">📂</div>
+                <div style="font-size:13px;color:var(--text-2)">Clique ou arraste o arquivo aqui</div>
+                <div style="font-size:11px;color:var(--text-3);margin-top:4px">Imagem, vídeo ou áudio · máx. 50MB</div>
+              </div>
+              <div id="upload-progress" class="hidden" style="font-size:13px;color:var(--text-2)">⏳ Enviando...</div>
+              <div id="upload-done" class="hidden" style="font-size:13px;color:var(--accent)"></div>
+            </div>
+          </div>
+
+          <div id="media-tab-url" class="hidden">
+            <input type="url" id="tpl-media-url" class="form-control" placeholder="https://exemplo.com/imagem.jpg" oninput="previewMedia()">
+            <div class="form-hint">Use links de CDN, Google Drive (modo público), Cloudinary, etc.</div>
+          </div>
         </div>
         <div id="media-preview-wrap" class="upload-preview hidden"></div>
       </div>
