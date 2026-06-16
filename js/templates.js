@@ -165,24 +165,31 @@ function handleFileDrop(e) {
 async function handleFileSelect(file) {
   if (!file) return;
   const cfg = Store.getConfig();
-  const url = (cfg.botApiUrl || '').replace(/\/$/, '');
-  if (!url) { toast('Configure a URL do servidor nas Configurações.', 'warning'); return; }
+  const apiUrl = (cfg.botApiUrl || '').replace(/\/$/, '');
+  if (!apiUrl) { toast('Configure a URL do servidor nas Configurações.', 'warning'); return; }
 
   document.getElementById('upload-idle').classList.add('hidden');
   document.getElementById('upload-done').classList.add('hidden');
   document.getElementById('upload-progress').classList.remove('hidden');
 
   try {
-    const form = new FormData();
-    form.append('file', file);
-
-    const res  = await fetch(`${url}/api/upload`, {
-      method:  'POST',
-      headers: { 'X-Api-Key': cfg.apiKey || 'dpgp-secret-key' },
-      body:    form,
+    const base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload  = e => resolve(e.target.result.split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
     });
-    const data = await res.json();
 
+    const res = await fetch(`${apiUrl}/api/upload`, {
+      method:  'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Api-Key':    cfg.apiKey || 'dpgp-secret-key',
+      },
+      body: JSON.stringify({ filename: file.name, data: base64 }),
+    });
+
+    const data = await res.json();
     if (!data.success) throw new Error(data.error);
 
     document.getElementById('tpl-media-url').value = data.url;
