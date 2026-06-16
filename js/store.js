@@ -8,15 +8,15 @@ const Store = (() => {
 
   function getDB() {
     if (_db) return _db;
-    const url = localStorage.getItem('dpgp_sb_url');
-    const key = localStorage.getItem('dpgp_sb_key');
-    if (!url || !key) throw new Error('Supabase não configurado');
+    const url = CONFIG.supabaseUrl;
+    const key = CONFIG.supabaseKey;
+    if (!url || !key) throw new Error('Supabase não configurado em config.js');
     _db = window.supabase.createClient(url, key);
     return _db;
   }
 
   function isConfigured() {
-    return !!(localStorage.getItem('dpgp_sb_url') && localStorage.getItem('dpgp_sb_key'));
+    return !!(CONFIG.supabaseUrl && CONFIG.supabaseKey);
   }
 
   // ── Mapeamento DB (snake_case) ↔ JS (camelCase) ───────────────────────────

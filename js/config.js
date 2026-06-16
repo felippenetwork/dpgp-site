@@ -13,8 +13,11 @@ const CONFIG = {
   appTagline: 'Disparo de Grupos WhatsApp',
 
   // URL da API do bot WhatsApp (onde o Baileys está rodando)
-  // Deixe vazio se o bot estiver no mesmo servidor
   botApiUrl: '',
+
+  // Supabase — banco de dados compartilhado
+  supabaseUrl: 'https://lymlhjycpjstkcmumbka.supabase.co',
+  supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5bWxoanljcGpzdGtjbXVtYmthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2MzMyNTIsImV4cCI6MjA5NzIwOTI1Mn0.HxgcRhD5nlVYGxZNZmrMxfYCbQ0TXUB-YhvSBn8-poM',
 
   // Versão
   version: '1.0.0',
