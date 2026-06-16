@@ -162,15 +162,19 @@ function handleFileDrop(e) {
   if (file) handleFileSelect(file);
 }
 
+const UPLOAD_CHUNK_SIZE = 500 * 1024; // 500KB de base64 por chunk (bem abaixo do limite nginx)
+
 async function handleFileSelect(file) {
   if (!file) return;
-  const cfg = Store.getConfig();
+  const cfg    = Store.getConfig();
   const apiUrl = (cfg.botApiUrl || '').replace(/\/$/, '');
   if (!apiUrl) { toast('Configure a URL do servidor nas Configurações.', 'warning'); return; }
 
+  const progress = document.getElementById('upload-progress');
   document.getElementById('upload-idle').classList.add('hidden');
   document.getElementById('upload-done').classList.add('hidden');
-  document.getElementById('upload-progress').classList.remove('hidden');
+  progress.classList.remove('hidden');
+  progress.textContent = '⏳ Lendo arquivo...';
 
   try {
     const base64 = await new Promise((resolve, reject) => {
@@ -180,26 +184,50 @@ async function handleFileSelect(file) {
       reader.readAsDataURL(file);
     });
 
-    const res = await fetch(`${apiUrl}/api/upload`, {
-      method:  'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Api-Key':    cfg.apiKey || 'dpgp-secret-key',
-      },
-      body: JSON.stringify({ filename: file.name, data: base64 }),
+    const headers = {
+      'Content-Type': 'application/json',
+      'X-Api-Key':    cfg.apiKey || 'dpgp-secret-key',
+    };
+
+    // 1. inicia o upload
+    progress.textContent = '⏳ Iniciando...';
+    const startRes  = await fetch(`${apiUrl}/api/upload/start`, { method: 'POST', headers, body: '{}' });
+    const startData = await startRes.json();
+    if (!startData.success) throw new Error(startData.error || 'Falha ao iniciar upload');
+    const { uploadId } = startData;
+
+    // 2. envia chunks de 500KB
+    const total = Math.ceil(base64.length / UPLOAD_CHUNK_SIZE);
+    for (let i = 0; i < total; i++) {
+      const chunk    = base64.slice(i * UPLOAD_CHUNK_SIZE, (i + 1) * UPLOAD_CHUNK_SIZE);
+      const pct      = Math.round((i + 1) / total * 90);
+      progress.textContent = `⏳ Enviando... ${pct}%`;
+
+      const chunkRes  = await fetch(`${apiUrl}/api/upload/chunk`, {
+        method: 'POST', headers,
+        body: JSON.stringify({ uploadId, index: i, data: chunk }),
+      });
+      const chunkData = await chunkRes.json();
+      if (!chunkData.success) throw new Error(chunkData.error || `Falha no chunk ${i}`);
+    }
+
+    // 3. finaliza e monta o arquivo
+    progress.textContent = '⏳ Finalizando...';
+    const finishRes  = await fetch(`${apiUrl}/api/upload/finish`, {
+      method: 'POST', headers,
+      body: JSON.stringify({ uploadId, filename: file.name }),
     });
+    const finishData = await finishRes.json();
+    if (!finishData.success) throw new Error(finishData.error || 'Falha ao finalizar upload');
 
-    const data = await res.json();
-    if (!data.success) throw new Error(data.error);
-
-    document.getElementById('tpl-media-url').value = data.url;
-    document.getElementById('upload-progress').classList.add('hidden');
+    document.getElementById('tpl-media-url').value = finishData.url;
+    progress.classList.add('hidden');
     document.getElementById('upload-done').classList.remove('hidden');
     document.getElementById('upload-done').textContent = `✅ ${file.name} enviado`;
     previewMedia();
     toast('Arquivo enviado com sucesso!', 'success');
   } catch (err) {
-    document.getElementById('upload-progress').classList.add('hidden');
+    progress.classList.add('hidden');
     document.getElementById('upload-idle').classList.remove('hidden');
     toast('Erro ao enviar: ' + err.message, 'error');
   }
