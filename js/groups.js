@@ -89,47 +89,47 @@ function normalizeJid() {
   }
 }
 
-function saveGroup() {
+async function saveGroup() {
   const name = document.getElementById('grp-name').value.trim();
   const jid  = document.getElementById('grp-jid').value.trim();
-
   if (!jid) { toast('Informe o JID do grupo.', 'warning'); return; }
-
-  const result = Store.addGroup({ name: name || jid, jid });
-  if (!result) {
-    toast('Este grupo já está cadastrado.', 'error');
-    return;
-  }
-
-  toast('Grupo adicionado!', 'success');
-  closeModal();
-  renderTable();
+  try {
+    const result = await Store.addGroup({ name: name || jid, jid });
+    if (!result) { toast('Este grupo já está cadastrado.', 'error'); return; }
+    toast('Grupo adicionado!', 'success');
+    closeModal();
+    renderTable();
+  } catch (err) { toast('Erro: ' + err.message, 'error'); }
 }
 
-function toggleGroup(id) {
+async function toggleGroup(id) {
   const g = Store.getGroups().find(g => g.id === id);
   if (!g) return;
-  Store.updateGroup(id, { active: !g.active });
-  renderTable();
+  try { await Store.updateGroup(id, { active: !g.active }); renderTable(); }
+  catch (err) { toast('Erro: ' + err.message, 'error'); }
 }
 
-function editGroupName(id) {
+async function editGroupName(id) {
   const g = Store.getGroups().find(g => g.id === id);
   if (!g) return;
   const name = prompt('Novo nome do grupo:', g.name);
   if (name === null) return;
-  Store.updateGroup(id, { name: name.trim() || g.name });
-  renderTable();
-  toast('Nome atualizado.', 'success');
+  try {
+    await Store.updateGroup(id, { name: name.trim() || g.name });
+    renderTable();
+    toast('Nome atualizado.', 'success');
+  } catch (err) { toast('Erro: ' + err.message, 'error'); }
 }
 
-function deleteGroup(id) {
+async function deleteGroup(id) {
   const g = Store.getGroups().find(g => g.id === id);
   if (!g) return;
   if (!confirm(`Remover o grupo "${g.name}" da lista de disparo?`)) return;
-  Store.deleteGroup(id);
-  toast('Grupo removido.', 'warning');
-  renderTable();
+  try {
+    await Store.deleteGroup(id);
+    toast('Grupo removido.', 'warning');
+    renderTable();
+  } catch (err) { toast('Erro: ' + err.message, 'error'); }
 }
 
 // ── Carregar grupos do WhatsApp ──
@@ -194,15 +194,17 @@ function toggleWASelectAll(check) {
   document.querySelectorAll('.wa-chk').forEach(el => el.checked = check);
 }
 
-function importWASelected() {
+async function importWASelected() {
   const checks = document.querySelectorAll('.wa-chk:checked');
   if (!checks.length) { toast('Selecione pelo menos um grupo.', 'warning'); return; }
 
   let added = 0;
-  checks.forEach(el => {
-    const result = Store.addGroup({ jid: el.dataset.jid, name: el.dataset.name });
-    if (result) added++;
-  });
+  for (const el of checks) {
+    try {
+      const result = await Store.addGroup({ jid: el.dataset.jid, name: el.dataset.name });
+      if (result) added++;
+    } catch (_) {}
+  }
 
   toast(`${added} grupo(s) adicionado(s)!${checks.length - added > 0 ? ` (${checks.length - added} já existiam)` : ''}`, 'success');
   closeWAModal();
@@ -269,21 +271,20 @@ function parseImport() {
   }
 }
 
-function doImport() {
-  if (!_importedGroups.length) {
-    toast('Clique em "Pré-visualizar" primeiro.', 'warning');
-    return;
-  }
+async function doImport() {
+  if (!_importedGroups.length) { toast('Clique em "Pré-visualizar" primeiro.', 'warning'); return; }
 
   let added = 0;
-  _importedGroups.forEach(g => {
-    const result = Store.addGroup(g);
-    if (result) added++;
-  });
+  for (const g of _importedGroups) {
+    try { const r = await Store.addGroup(g); if (r) added++; } catch (_) {}
+  }
 
   toast(`${added} grupo(s) importado(s)!${_importedGroups.length - added > 0 ? ` (${_importedGroups.length - added} já existiam)` : ''}`, 'success');
   closeImportModal();
   renderTable();
 }
 
-document.addEventListener('DOMContentLoaded', renderTable);
+document.addEventListener('DOMContentLoaded', async () => {
+  try { await Store.init(); } catch { toast('Configure o Supabase em Configurações → Banco de Dados.', 'warning'); return; }
+  renderTable();
+});

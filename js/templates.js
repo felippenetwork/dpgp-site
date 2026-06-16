@@ -277,7 +277,7 @@ function updateCharCount() {
   document.getElementById('char-count').textContent = `${len} caractere${len !== 1 ? 's' : ''}`;
 }
 
-function saveTemplate() {
+async function saveTemplate() {
   const id      = document.getElementById('edit-id').value;
   const name    = document.getElementById('tpl-name').value.trim();
   const type    = document.getElementById('tpl-type').value;
@@ -285,35 +285,43 @@ function saveTemplate() {
   const mediaUrl = document.getElementById('tpl-media-url').value.trim();
   const active  = document.getElementById('tpl-active').checked;
 
-  if (type === 'text' && !content) {
-    toast('Digite o conteúdo da mensagem.', 'warning');
-    return;
-  }
+  if (type === 'text' && !content) { toast('Digite o conteúdo da mensagem.', 'warning'); return; }
 
-  if (id) {
-    Store.updateTemplate(id, { name, type, content, mediaUrl, active });
-    toast('Template atualizado!', 'success');
-  } else {
-    Store.addTemplate({ name, type, content, mediaUrl, active });
-    toast('Template criado!', 'success');
+  const btn = document.getElementById('modal-save-btn');
+  btn.disabled = true;
+  try {
+    if (id) {
+      await Store.updateTemplate(id, { name, type, content, mediaUrl, active });
+      toast('Template atualizado!', 'success');
+    } else {
+      await Store.addTemplate({ name, type, content, mediaUrl, active });
+      toast('Template criado!', 'success');
+    }
+    closeModal();
+    renderGrid();
+  } catch (err) {
+    toast('Erro ao salvar: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
   }
-
-  closeModal();
-  renderGrid();
 }
 
-function deleteTemplate(id) {
+async function deleteTemplate(id) {
   if (!confirm('Deseja deletar este template?')) return;
-  Store.deleteTemplate(id);
-  toast('Template deletado.', 'warning');
-  renderGrid();
+  try {
+    await Store.deleteTemplate(id);
+    toast('Template deletado.', 'warning');
+    renderGrid();
+  } catch (err) { toast('Erro: ' + err.message, 'error'); }
 }
 
-function toggleTemplate(id) {
+async function toggleTemplate(id) {
   const tpl = Store.getTemplates().find(t => t.id === id);
   if (!tpl) return;
-  Store.updateTemplate(id, { active: !tpl.active });
-  renderGrid();
+  try {
+    await Store.updateTemplate(id, { active: !tpl.active });
+    renderGrid();
+  } catch (err) { toast('Erro: ' + err.message, 'error'); }
 }
 
 // ── View Modal ──
@@ -356,4 +364,7 @@ function closeViewBackdrop(e) {
   if (e.target === document.getElementById('view-backdrop')) closeView();
 }
 
-document.addEventListener('DOMContentLoaded', renderGrid);
+document.addEventListener('DOMContentLoaded', async () => {
+  try { await Store.init(); } catch { toast('Configure o Supabase em Configurações → Banco de Dados.', 'warning'); return; }
+  renderGrid();
+});

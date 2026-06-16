@@ -96,16 +96,18 @@ function changePage(delta) {
   renderPage();
 }
 
-function clearAll() {
+async function clearAll() {
   if (!confirm('Limpar todo o histórico de disparos?')) return;
-  Store.clearHistory();
-  toast('Histórico limpo.', 'warning');
-  filteredList = [];
-  renderPage();
-  document.getElementById('hs-success').textContent = 0;
-  document.getElementById('hs-failed').textContent  = 0;
-  document.getElementById('hs-today').textContent   = 0;
-  document.getElementById('hist-count').textContent = '0 registros';
+  try {
+    await Store.clearHistory();
+    toast('Histórico limpo.', 'warning');
+    filteredList = [];
+    renderPage();
+    document.getElementById('hs-success').textContent = 0;
+    document.getElementById('hs-failed').textContent  = 0;
+    document.getElementById('hs-today').textContent   = 0;
+    document.getElementById('hist-count').textContent = '0 registros';
+  } catch (err) { toast('Erro: ' + err.message, 'error'); }
 }
 
 function exportCSV() {
@@ -128,4 +130,7 @@ function exportCSV() {
   toast('CSV exportado!', 'success');
 }
 
-document.addEventListener('DOMContentLoaded', filterAndRender);
+document.addEventListener('DOMContentLoaded', async () => {
+  try { await Store.init(); } catch { toast('Configure o Supabase em Configurações → Banco de Dados.', 'warning'); return; }
+  filterAndRender();
+});

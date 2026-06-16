@@ -54,12 +54,20 @@ function checkDelayWarning() {
   document.getElementById('delay-warning').classList.toggle('hidden', min >= 15);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  // Carrega credenciais Supabase do localStorage
+  document.getElementById('cfg-sb-url').value = localStorage.getItem('dpgp_sb_url') || '';
+  document.getElementById('cfg-sb-key').value = localStorage.getItem('dpgp_sb_key') || '';
+
+  if (Store.isConfigured()) {
+    try { await Store.init(); } catch (e) { toast('Erro ao conectar ao Supabase: ' + e.message, 'error'); }
+  }
+
   loadForm();
   document.getElementById('cfg-delay-min').addEventListener('input', checkDelayWarning);
 });
 
-function saveAll() {
+async function saveAll() {
   const horas   = parseInt(document.getElementById('cfg-horas').value)   || 1;
   const minutos = parseInt(document.getElementById('cfg-minutos').value) || 0;
   const delayMin = parseInt(document.getElementById('cfg-delay-min').value) || 30;
@@ -87,8 +95,23 @@ function saveAll() {
     ausenciaDelay:     parseInt(document.getElementById('cfg-ausencia-delay').value) || 25,
   };
 
-  Store.saveConfig(cfg);
-  toast('Configurações salvas com sucesso!', 'success');
+  // Salva credenciais Supabase no localStorage (sempre local)
+  const sbUrl = document.getElementById('cfg-sb-url').value.trim();
+  const sbKey = document.getElementById('cfg-sb-key').value.trim();
+  if (sbUrl) localStorage.setItem('dpgp_sb_url', sbUrl);
+  if (sbKey) localStorage.setItem('dpgp_sb_key', sbKey);
+
+  if (!Store.isConfigured()) {
+    toast('Supabase configurado! Recarregue a página.', 'success');
+    return;
+  }
+
+  try {
+    await Store.saveConfig(cfg);
+    toast('Configurações salvas com sucesso!', 'success');
+  } catch (err) {
+    toast('Erro ao salvar: ' + err.message, 'error');
+  }
 }
 
 // ── Helpers para API do bot ──
