@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Grupos — DPGP</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>">
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebar-placeholder"></div>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="page-heading">
+        <span class="page-title">Grupos</span>
+        <span class="page-sub">Grupos que recebem os disparos</span>
+      </div>
+      <div class="topbar-actions">
+        <span id="group-count" class="text-muted text-sm"></span>
+        <button class="btn btn-primary" onclick="openAddModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Adicionar Grupo
+        </button>
+      </div>
+    </header>
+
+    <div class="content">
+      <div class="toolbar">
+        <div class="search-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" class="search-input" id="search" placeholder="Buscar grupos..." oninput="renderTable()">
+        </div>
+        <select class="filter-select" id="filter-status" onchange="renderTable()">
+          <option value="">Todos</option>
+          <option value="active">Ativos</option>
+          <option value="inactive">Inativos</option>
+        </select>
+        <button class="btn btn-primary btn-sm" onclick="loadFromWhatsApp()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Carregar do WhatsApp
+        </button>
+        <button class="btn btn-secondary btn-sm" onclick="importFromBot()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
+          Importar do Bot
+        </button>
+      </div>
+
+      <div class="card">
+        <div class="table-wrap">
+          <table id="groups-table">
+            <thead>
+              <tr>
+                <th>Nome do Grupo</th>
+                <th>JID / Identificador</th>
+                <th>Adicionado</th>
+                <th>Status</th>
+                <th style="text-align:right">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="groups-tbody"></tbody>
+          </table>
+          <div id="groups-empty" class="empty-state hidden">
+            <div class="empty-icon">👥</div>
+            <div class="empty-title">Nenhum grupo cadastrado</div>
+            <div class="empty-desc">Adicione os grupos do WhatsApp que devem receber os disparos.</div>
+            <button class="btn btn-primary" onclick="openAddModal()">Adicionar grupo</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Group Modal -->
+<div class="modal-backdrop hidden" id="modal-backdrop" onclick="closeModalBackdrop(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Adicionar Grupo</span>
+      <button class="modal-close" onclick="closeModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Nome do Grupo</label>
+        <input type="text" id="grp-name" class="form-control" placeholder="Ex: Clube do Churrasco I">
+      </div>
+      <div class="form-group">
+        <label class="form-label">JID do Grupo <span style="color:var(--text-3);font-weight:400">(identificador WhatsApp)</span></label>
+        <input type="text" id="grp-jid" class="form-control" placeholder="123456789@g.us" oninput="normalizeJid()">
+        <div class="form-hint">
+          Para obter o JID, envie <code style="background:var(--bg-hover);padding:1px 5px;border-radius:3px;font-size:11px">!ativar-dpgp</code> no WhatsApp e copie o identificador do grupo.
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveGroup()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        Adicionar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Load from WhatsApp Modal -->
+<div class="modal-backdrop hidden" id="wa-backdrop" onclick="closeWAModalBackdrop(event)">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title">Grupos do WhatsApp</span>
+      <button class="modal-close" onclick="closeWAModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div id="wa-loading" style="text-align:center;padding:32px;color:var(--text-3)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:32px;height:32px;margin-bottom:12px;opacity:.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <div>Carregando grupos...</div>
+      </div>
+      <div id="wa-content" class="hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <span id="wa-count" style="font-size:13px;color:var(--text-3)"></span>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-ghost btn-sm" onclick="toggleWASelectAll(true)">Selecionar todos</button>
+            <button class="btn btn-ghost btn-sm" onclick="toggleWASelectAll(false)">Limpar</button>
+          </div>
+        </div>
+        <div style="margin-bottom:10px">
+          <input type="text" class="form-control" id="wa-search" placeholder="Filtrar grupos..." oninput="filterWAList()" style="font-size:13px">
+        </div>
+        <div id="wa-list" style="max-height:340px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm)"></div>
+      </div>
+      <div id="wa-error" class="hidden" style="text-align:center;padding:24px;color:var(--danger)"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeWAModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="importWASelected()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        Adicionar Selecionados
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Import from Bot Modal -->
+<div class="modal-backdrop hidden" id="import-backdrop" onclick="closeImportBackdrop(event)">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title">Importar Grupos do Bot</span>
+      <button class="modal-close" onclick="closeImportModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:14px;color:var(--text-2);margin-bottom:16px">
+        Cole o conteúdo do arquivo <code style="background:var(--bg-hover);padding:2px 6px;border-radius:3px">data/config.json</code> do bot abaixo para importar os grupos automaticamente:
+      </p>
+      <div class="form-group">
+        <label class="form-label">JSON de configuração do bot</label>
+        <textarea id="import-json" class="form-control" rows="10" placeholder='{"grupos": [{"id": "12345@g.us", "name": "Grupo 1"}, ...]}'></textarea>
+      </div>
+      <div id="import-preview" class="hidden" style="background:var(--bg-hover);border-radius:var(--radius-sm);padding:14px;margin-top:12px">
+        <div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;margin-bottom:8px">Grupos encontrados:</div>
+        <div id="import-list" style="font-size:13px;color:var(--text-2);max-height:150px;overflow-y:auto"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeImportModal()">Cancelar</button>
+      <button class="btn btn-secondary" onclick="parseImport()">Pré-visualizar</button>
+      <button class="btn btn-primary" onclick="doImport()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        Importar grupos
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="js/config.js"></script>
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+<script src="js/groups.js"></script>
+</body>
+</html>

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Histórico — DPGP</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>">
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebar-placeholder"></div>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="page-heading">
+        <span class="page-title">Histórico</span>
+        <span class="page-sub">Log de disparos realizados</span>
+      </div>
+      <div class="topbar-actions">
+        <span id="hist-count" class="text-muted text-sm"></span>
+        <button class="btn btn-secondary btn-sm" onclick="exportCSV()">
+          <svg style="width:14px;height:14px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar CSV
+        </button>
+        <button class="btn btn-danger btn-sm" onclick="clearAll()">Limpar tudo</button>
+      </div>
+    </header>
+
+    <div class="content">
+      <div class="toolbar">
+        <div class="search-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" class="search-input" id="search" placeholder="Buscar por grupo..." oninput="renderHistory()">
+        </div>
+        <select class="filter-select" id="filter-status" onchange="renderHistory()">
+          <option value="">Todos</option>
+          <option value="success">Sucesso</option>
+          <option value="failed">Falha</option>
+        </select>
+        <select class="filter-select" id="filter-type" onchange="renderHistory()">
+          <option value="">Todos os tipos</option>
+          <option value="text">Texto</option>
+          <option value="image">Imagem</option>
+          <option value="video">Vídeo</option>
+          <option value="audio">Áudio</option>
+        </select>
+        <input type="date" class="filter-select" id="filter-date" onchange="renderHistory()" title="Filtrar por data">
+      </div>
+
+      <div class="card">
+        <div class="table-wrap">
+          <table id="hist-table">
+            <thead>
+              <tr>
+                <th>Status</th>
+                <th>Grupo</th>
+                <th>Tipo</th>
+                <th>Horário</th>
+                <th>Há quanto tempo</th>
+              </tr>
+            </thead>
+            <tbody id="hist-tbody"></tbody>
+          </table>
+          <div id="hist-empty" class="empty-state hidden">
+            <div class="empty-icon">📭</div>
+            <div class="empty-title">Nenhum disparo registrado</div>
+            <div class="empty-desc">Os disparos realizados pelo bot aparecerão aqui automaticamente.</div>
+          </div>
+        </div>
+
+        <div id="pagination" style="display:flex;align-items:center;justify-content:space-between;padding:16px 0 0;border-top:1px solid var(--border);margin-top:8px">
+          <span id="page-info" class="text-muted text-sm"></span>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-secondary btn-sm" id="btn-prev" onclick="changePage(-1)">← Anterior</button>
+            <button class="btn btn-secondary btn-sm" id="btn-next" onclick="changePage(1)">Próxima →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats bar -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:20px" id="hist-stats">
+        <div class="stat-card">
+          <div class="stat-icon-wrap si-green">✅</div>
+          <div class="stat-info">
+            <div class="stat-value" id="hs-success">0</div>
+            <div class="stat-label">Com sucesso</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon-wrap si-red">❌</div>
+          <div class="stat-info">
+            <div class="stat-value" id="hs-failed">0</div>
+            <div class="stat-label">Com falha</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon-wrap si-blue">📊</div>
+          <div class="stat-info">
+            <div class="stat-value" id="hs-today">0</div>
+            <div class="stat-label">Hoje</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="js/config.js"></script>
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+<script src="js/history.js"></script>
+</body>
+</html>

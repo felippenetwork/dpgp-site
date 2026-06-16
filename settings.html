@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Configurações — DPGP</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>">
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebar-placeholder"></div>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="page-heading">
+        <span class="page-title">Configurações</span>
+        <span class="page-sub">Parâmetros de disparo e automação</span>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-secondary btn-sm" onclick="resetDefaults()">Restaurar padrões</button>
+        <button class="btn btn-primary" onclick="saveAll()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Salvar configurações
+        </button>
+      </div>
+    </header>
+
+    <div class="content" style="max-width:720px">
+
+      <!-- Automação -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <span class="card-title">⚡ Automação</span>
+        </div>
+        <div class="form-group">
+          <label class="toggle-wrap">
+            <div class="toggle">
+              <input type="checkbox" id="cfg-ativo">
+              <div class="toggle-track"></div>
+              <div class="toggle-thumb"></div>
+            </div>
+            <div>
+              <div style="font-size:14px;font-weight:600;color:var(--text-1)">Ativar disparos automáticos</div>
+              <div class="form-hint" style="margin:0">Quando ativado, o bot envia postagens automaticamente nos intervalos configurados.</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Intervalo -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <span class="card-title">⏱️ Intervalo entre disparos</span>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Horas</label>
+            <input type="number" id="cfg-horas" class="form-control" min="0" max="24" placeholder="1">
+            <div class="form-hint">Intervalo em horas entre cada ciclo de disparo.</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Minutos (adicional)</label>
+            <input type="number" id="cfg-minutos" class="form-control" min="0" max="59" placeholder="0">
+            <div class="form-hint">Ex: 1h 30min = disparo a cada 1:30.</div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Máximo de postagens por dia</label>
+          <input type="number" id="cfg-maxdia" class="form-control" min="1" max="100" placeholder="12">
+          <div class="form-hint">Limite de quantas postagens são enviadas por dia por grupo.</div>
+        </div>
+      </div>
+
+      <!-- Horário -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <span class="card-title">🕐 Janela horária</span>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Início dos disparos</label>
+            <input type="time" id="cfg-inicio" class="form-control" value="08:00">
+            <div class="form-hint">Hora mais cedo que um disparo pode ocorrer.</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Fim dos disparos</label>
+            <input type="time" id="cfg-fim" class="form-control" value="21:00">
+            <div class="form-hint">Hora mais tarde que um disparo pode ocorrer.</div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fuso horário</label>
+          <select id="cfg-timezone" class="form-control">
+            <option value="America/Sao_Paulo">America/Sao_Paulo (Brasília, UTC-3)</option>
+            <option value="America/Manaus">America/Manaus (Manaus, UTC-4)</option>
+            <option value="America/Belem">America/Belem (Belém, UTC-3)</option>
+            <option value="America/Fortaleza">America/Fortaleza (Fortaleza, UTC-3)</option>
+            <option value="America/Recife">America/Recife (Recife, UTC-3)</option>
+            <option value="America/Cuiaba">America/Cuiaba (Cuiabá, UTC-4)</option>
+            <option value="UTC">UTC</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Delay entre grupos -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <span class="card-title">⏳ Delay entre grupos</span>
+        </div>
+        <p style="font-size:13.5px;color:var(--text-2);margin-bottom:16px">
+          Tempo de espera entre o envio para um grupo e o próximo. Valores maiores reduzem risco de ban.
+        </p>
+        <div class="form-group">
+          <label class="form-label">Delay mínimo (segundos)</label>
+          <input type="number" id="cfg-delay-min" class="form-control" min="5" max="300" placeholder="30">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Delay máximo (segundos)</label>
+          <input type="number" id="cfg-delay-max" class="form-control" min="5" max="600" placeholder="60">
+          <div class="form-hint">O bot aguarda um tempo aleatório entre o mínimo e máximo. Recomendado: mínimo 30s, máximo 60s.</div>
+        </div>
+        <div id="delay-warning" class="hidden" style="background:var(--warning-dim);border:1px solid rgba(255,199,0,.2);border-radius:var(--radius-sm);padding:10px 14px;font-size:13px;color:var(--warning);margin-top:4px">
+          ⚠️ Delay muito baixo pode resultar em ban pelo WhatsApp. Recomendado mínimo de 15 segundos.
+        </div>
+      </div>
+
+      <!-- Bot API -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <span class="card-title">🔌 Integração com o Servidor Bot (BronxyHost)</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">URL do servidor API</label>
+          <input type="url" id="cfg-bot-url" class="form-control" placeholder="http://seu-ip-bronxyhost:3001">
+          <div class="form-hint">IP ou domínio do servidor BronxyHost onde o DPGP-API está rodando. Ex: <code style="background:var(--bg-hover);padding:1px 5px;border-radius:3px">http://123.45.67.89:3001</code></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">API Key (chave de segurança)</label>
+          <input type="text" id="cfg-api-key" class="form-control" placeholder="dpgp-secret-key">
+          <div class="form-hint">Mesma API Key configurada na variável <code style="background:var(--bg-hover);padding:1px 5px;border-radius:3px">API_KEY</code> do servidor. Padrão: <code style="background:var(--bg-hover);padding:1px 5px;border-radius:3px">dpgp-secret-key</code></div>
+        </div>
+        <div class="form-group">
+          <button class="btn btn-secondary" onclick="testConnection()" id="btn-test-conn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            Testar conexão
+          </button>
+          <span id="conn-test-result" style="font-size:13px;margin-left:12px"></span>
+        </div>
+      </div>
+
+      <!-- Sync -->
+      <div class="card mb-4" style="border-color:rgba(37,211,102,.2)">
+        <div class="card-header">
+          <span class="card-title" style="color:var(--accent)">🔄 Sincronizar com o Bot</span>
+        </div>
+        <p style="font-size:13.5px;color:var(--text-2);margin-bottom:16px">
+          Envie todos os templates, grupos e configurações para o servidor bot. Faça isso sempre que alterar algo no site.
+        </p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="syncToBot()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+            Enviar para o bot
+          </button>
+          <button class="btn btn-secondary" onclick="pullHistory()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
+            Importar histórico do bot
+          </button>
+          <button class="btn btn-secondary" onclick="triggerDispatch()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Disparar agora
+          </button>
+        </div>
+        <div id="sync-status" style="margin-top:14px;font-size:13px;color:var(--text-3)"></div>
+      </div>
+
+      <!-- Danger zone -->
+      <div class="card" style="border-color:rgba(241,65,108,.2)">
+        <div class="card-header">
+          <span class="card-title" style="color:var(--danger)">🗑️ Zona de perigo</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:20px">
+            <div>
+              <div style="font-size:14px;font-weight:600;color:var(--text-1)">Limpar histórico</div>
+              <div class="form-hint" style="margin:0">Remove todos os registros de disparos do histórico.</div>
+            </div>
+            <button class="btn btn-danger btn-sm" onclick="clearHistory()" style="flex-shrink:0">Limpar</button>
+          </div>
+          <div class="divider"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:20px">
+            <div>
+              <div style="font-size:14px;font-weight:600;color:var(--text-1)">Redefinir todos os dados</div>
+              <div class="form-hint" style="margin:0">Apaga todos os templates, grupos e configurações. Não pode ser desfeito.</div>
+            </div>
+            <button class="btn btn-danger btn-sm" onclick="resetAll()" style="flex-shrink:0">Redefinir tudo</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="js/config.js"></script>
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+<script src="js/settings.js"></script>
+</body>
+</html>

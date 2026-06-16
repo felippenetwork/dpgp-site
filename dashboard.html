@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — DPGP</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebar-placeholder"></div>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="page-heading">
+        <span class="page-title">Dashboard</span>
+        <span class="page-sub">Visão geral do sistema</span>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-secondary btn-sm" onclick="loadPage()">
+          <svg style="width:14px;height:14px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          Atualizar
+        </button>
+        <a href="templates.html" class="btn btn-primary btn-sm">
+          <svg style="width:14px;height:14px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Novo Template
+        </a>
+      </div>
+    </header>
+
+    <div class="content">
+      <!-- Stats -->
+      <div class="stats-grid" id="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon-wrap si-green">📋</div>
+          <div class="stat-info">
+            <div class="stat-value" id="stat-templates">—</div>
+            <div class="stat-label">Templates ativos</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon-wrap si-blue">👥</div>
+          <div class="stat-info">
+            <div class="stat-value" id="stat-groups">—</div>
+            <div class="stat-label">Grupos ativos</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon-wrap si-orange">📤</div>
+          <div class="stat-info">
+            <div class="stat-value" id="stat-today">—</div>
+            <div class="stat-label">Disparos hoje</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon-wrap si-purple">📊</div>
+          <div class="stat-info">
+            <div class="stat-value" id="stat-total">—</div>
+            <div class="stat-label">Total de disparos</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 380px;gap:20px;">
+        <!-- Chart -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Disparos nos últimos 7 dias</span>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="dispatch-chart"></canvas>
+          </div>
+        </div>
+
+        <!-- Quick info -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Status do Bot</span>
+          </div>
+          <div id="bot-info-panel" style="display:flex;flex-direction:column;gap:14px;">
+            <div class="info-row">
+              <span style="font-size:13px;color:var(--text-3)">Automação</span>
+              <span id="info-ativo" style="font-size:13px;font-weight:600;">—</span>
+            </div>
+            <div class="info-row">
+              <span style="font-size:13px;color:var(--text-3)">Intervalo</span>
+              <span id="info-intervalo" style="font-size:13px;font-weight:600;">—</span>
+            </div>
+            <div class="info-row">
+              <span style="font-size:13px;color:var(--text-3)">Horário</span>
+              <span id="info-horario" style="font-size:13px;font-weight:600;">—</span>
+            </div>
+            <div class="info-row">
+              <span style="font-size:13px;color:var(--text-3)">Máx./dia</span>
+              <span id="info-maxdia" style="font-size:13px;font-weight:600;">—</span>
+            </div>
+            <div class="info-row">
+              <span style="font-size:13px;color:var(--text-3)">Delay</span>
+              <span id="info-delay" style="font-size:13px;font-weight:600;">—</span>
+            </div>
+            <div class="divider"></div>
+            <a href="settings.html" class="btn btn-secondary btn-sm" style="justify-content:center">
+              Editar configurações
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent dispatches -->
+      <div class="card mt-4">
+        <div class="card-header">
+          <span class="card-title">Histórico recente</span>
+          <a href="history.html" class="btn btn-ghost btn-sm">Ver tudo</a>
+        </div>
+        <div id="recent-history">
+          <div class="empty-state">
+            <div class="empty-icon">📭</div>
+            <div class="empty-title">Nenhum disparo registrado</div>
+            <div class="empty-desc">Os disparos realizados aparecerão aqui.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script src="js/config.js"></script>
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+<script src="js/dashboard.js"></script>
+</body>
+</html>
