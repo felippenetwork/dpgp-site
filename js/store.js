@@ -178,6 +178,26 @@ const Store = (() => {
       _cache.history = [];
     },
 
+    // ── Storage de arquivos (Supabase Storage) ───────────────────────────────
+    async uploadFile(file) {
+      const db  = getDB();
+      const ext = file.name.split('.').pop().toLowerCase();
+      const name = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const { data, error } = await db.storage.from('uploads').upload(name, file, {
+        cacheControl: '3600', upsert: false,
+      });
+      if (error) throw error;
+      const { data: urlData } = db.storage.from('uploads').getPublicUrl(data.path);
+      return urlData.publicUrl;
+    },
+
+    async deleteFile(url) {
+      if (!url || !url.includes('/uploads/')) return;
+      const db   = getDB();
+      const path = url.split('/uploads/').pop().split('?')[0];
+      await db.storage.from('uploads').remove([path]);
+    },
+
     // ── Stats ────────────────────────────────────────────────────────────────
     getStats() {
       const today = new Date().toDateString();

@@ -211,60 +211,18 @@ function handleFileDrop(e) {
   if (file) handleFileSelect(file);
 }
 
-const UPLOAD_CHUNK_SIZE = 500 * 1024;
-
 async function handleFileSelect(file) {
   if (!file) return;
-  const cfg    = Store.getConfig();
-  const apiUrl = (cfg.botApiUrl || '').replace(/\/$/, '');
-  if (!apiUrl) { toast('Configure a URL do servidor nas Configurações.', 'warning'); return; }
 
   const progress = document.getElementById('upload-progress');
   document.getElementById('upload-idle').classList.add('hidden');
   document.getElementById('upload-done').classList.add('hidden');
   progress.classList.remove('hidden');
-  progress.textContent = '⏳ Lendo arquivo...';
+  progress.textContent = '⏳ Enviando...';
 
   try {
-    const base64 = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload  = e => resolve(e.target.result.split(',')[1]);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-
-    const headers = {
-      'Content-Type': 'application/json',
-      'X-Api-Key':    cfg.apiKey || 'dpgp-secret-key',
-    };
-
-    progress.textContent = '⏳ Iniciando...';
-    const startRes  = await fetch(`${apiUrl}/api/upload/start`, { method: 'POST', headers, body: '{}' });
-    const startData = await startRes.json();
-    if (!startData.success) throw new Error(startData.error || 'Falha ao iniciar upload');
-    const { uploadId } = startData;
-
-    const total = Math.ceil(base64.length / UPLOAD_CHUNK_SIZE);
-    for (let i = 0; i < total; i++) {
-      const chunk = base64.slice(i * UPLOAD_CHUNK_SIZE, (i + 1) * UPLOAD_CHUNK_SIZE);
-      progress.textContent = `⏳ Enviando... ${Math.round((i + 1) / total * 90)}%`;
-      const chunkRes  = await fetch(`${apiUrl}/api/upload/chunk`, {
-        method: 'POST', headers,
-        body: JSON.stringify({ uploadId, index: i, data: chunk }),
-      });
-      const chunkData = await chunkRes.json();
-      if (!chunkData.success) throw new Error(chunkData.error || `Falha no chunk ${i}`);
-    }
-
-    progress.textContent = '⏳ Finalizando...';
-    const finishRes  = await fetch(`${apiUrl}/api/upload/finish`, {
-      method: 'POST', headers,
-      body: JSON.stringify({ uploadId, filename: file.name }),
-    });
-    const finishData = await finishRes.json();
-    if (!finishData.success) throw new Error(finishData.error || 'Falha ao finalizar upload');
-
-    _mediaUrls.push(finishData.url);
+    const url = await Store.uploadFile(file);
+    _mediaUrls.push(url);
     renderMediaList();
 
     progress.classList.add('hidden');
@@ -345,7 +303,11 @@ async function saveTemplate() {
 async function deleteTemplate(id) {
   if (!confirm('Deseja deletar este template?')) return;
   try {
+    const tpl = Store.getTemplates().find(t => t.id === id);
     await Store.deleteTemplate(id);
+    if (tpl?.mediaUrls?.length) {
+      await Promise.all(tpl.mediaUrls.map(u => Store.deleteFile(u).catch(() => {})));
+    }
     toast('Template deletado.', 'warning');
     renderGrid();
   } catch (err) { toast('Erro: ' + err.message, 'error'); }
