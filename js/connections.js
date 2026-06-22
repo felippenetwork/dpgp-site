@@ -137,7 +137,8 @@ async function disconnectBot() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   Auth.requireAuth();
+  try { await Store.init(); } catch (e) { console.error('Supabase:', e.message); }
   refreshStatus();
 });
