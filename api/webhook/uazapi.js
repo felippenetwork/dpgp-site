@@ -40,54 +40,55 @@ function extractIncomingMessage(rawData) {
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).end();
 
+  let logMsg = 'start';
   try {
     let body = req.body;
-    if (typeof body === 'string') {
-      try { body = JSON.parse(body); } catch { body = {}; }
-    }
+    if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
     body = body || {};
 
-    const event = (body.event || body.Event || body.eventType || body.EventType || '').toLowerCase();
+    const event   = (body.event || body.Event || body.eventType || body.EventType || '').toLowerCase();
     const rawData = body.data || body.Data;
+    logMsg = 'event='+event+' dataKeys='+(rawData ? Object.keys(rawData).join(',') : 'null');
 
-    // LOG DIAGNÓSTICO
-    console.log('[WH] event:', event, '| keys:', Object.keys(body).join(','));
-    console.log('[WH] data keys:', rawData ? Object.keys(rawData).join(',') : 'null');
-
-    if (!event.startsWith('message')) return res.status(200).json({ ok: true });
+    if (!event.startsWith('message')) { console.log('[WH] SKIP '+logMsg); return res.status(200).json({ ok: true }); }
 
     const incoming = extractIncomingMessage(rawData);
-    console.log('[WH] incoming:', JSON.stringify(incoming));
+    logMsg += ' jid='+(incoming?.jid||'null')+' fromMe='+incoming?.fromMe+' isGroup='+incoming?.isGroup;
 
-    if (!incoming || incoming.fromMe || incoming.isGroup) return res.status(200).json({ ok: true });
+    if (!incoming || incoming.fromMe || incoming.isGroup) { console.log('[WH] SKIP '+logMsg); return res.status(200).json({ ok: true }); }
 
     const cfg = await db.getConfig();
-    if (!cfg.ausenciaAtivo || !cfg.uazapiInstanceToken) return res.status(200).json({ ok: true });
+    logMsg += ' ativo='+cfg.ausenciaAtivo+' msgs='+cfg.ausenciaMensagens?.length+' token='+!!cfg.uazapiInstanceToken;
+
+    if (!cfg.ausenciaAtivo || !cfg.uazapiInstanceToken) { console.log('[WH] SKIP '+logMsg); return res.status(200).json({ ok: true }); }
 
     const msgs = Array.isArray(cfg.ausenciaMensagens) && cfg.ausenciaMensagens.length
       ? cfg.ausenciaMensagens : (cfg.ausenciaMensagem ? [cfg.ausenciaMensagem] : []);
-    if (!msgs.length) return res.status(200).json({ ok: true });
+    if (!msgs.length) { console.log('[WH] SKIP no-msgs '+logMsg); return res.status(200).json({ ok: true }); }
 
     const cooldown = cfg.ausenciaCooldown || {};
     const ultimo   = cooldown[incoming.jid] ? new Date(cooldown[incoming.jid]).getTime() : 0;
-    if (Date.now() - ultimo < COOLDOWN_MS) return res.status(200).json({ ok: true });
+    const emCooldown = Date.now() - ultimo < COOLDOWN_MS;
+    logMsg += ' cooldown='+emCooldown;
+
+    if (emCooldown) { console.log('[WH] SKIP '+logMsg); return res.status(200).json({ ok: true }); }
 
     const texto   = msgs[Math.floor(Math.random() * msgs.length)].trim();
     const delayMs = (cfg.ausenciaDelay || 25) * 1000;
 
-    console.log('[WH] enviando para:', incoming.jid);
     await uazapi.sendText(cfg.uazapiInstanceToken, incoming.jid, texto, { delay: delayMs });
-    console.log('[WH] enviado OK');
 
     const novoCooldown = { ...cooldown, [incoming.jid]: new Date().toISOString() };
     for (const jid of Object.keys(novoCooldown)) {
       if (Date.now() - new Date(novoCooldown[jid]).getTime() > COOLDOWN_MS) delete novoCooldown[jid];
     }
     await db.saveConfig({ ...cfg, ausenciaCooldown: novoCooldown });
+
+    console.log('[WH] SENT '+logMsg);
     res.status(200).json({ ok: true });
 
   } catch (err) {
-    console.log('[WH] ERRO:', err.message);
+    console.log('[WH] ERR '+logMsg+' err='+err.message);
     res.status(200).json({ ok: true });
   }
 };
