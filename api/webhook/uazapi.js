@@ -47,7 +47,7 @@ module.exports = async (req, res) => {
     body = body || {};
 
     const event   = (body.event || body.Event || body.eventType || body.EventType || '').toLowerCase();
-    const rawData = body.data || body.Data;
+    const rawData = body.data || body.Data || body.chat || body.Chat || body.message || body.Message;
     const allKeys = Object.keys(body);
     console.log('[WH-KEYS]', allKeys.slice(0,5).join('|'), '...', allKeys.slice(5).join('|'));
     logMsg = 'event='+event+' dataKeys='+(rawData ? Object.keys(rawData).join(',') : 'null');
