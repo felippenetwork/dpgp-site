@@ -40,7 +40,7 @@ function extractIncomingMessage(rawData) {
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).end();
 
-  const debug = { step: 'start', err: null };
+  const debug = { step: 'start', jid: null, fromMe: null, isGroup: null, err: null };
   try {
     let body = req.body;
     if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
