@@ -8,7 +8,12 @@ module.exports = async (req, res) => {
     const cfg = await db.getConfig();
     if (!cfg.uazapiInstanceToken) return res.json({ success: true, message: 'Já desconectado.' });
 
-    await uazapi.disconnectInstance(cfg.uazapiInstanceToken);
+    try {
+      await uazapi.disconnectInstance(cfg.uazapiInstanceToken);
+    } catch (err) {
+      if (!uazapi.isStaleTokenError(err)) throw err;
+      await db.saveConfig({ ...cfg, uazapiInstanceId: null, uazapiInstanceToken: null });
+    }
     res.json({ success: true, message: 'Desconectado com sucesso.' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

@@ -15,7 +15,15 @@ module.exports = async (req, res) => {
       return res.json({ success: true, connected: false, qr: null, phone: null });
     }
 
-    const result = await uazapi.getInstanceStatus(cfg.uazapiInstanceToken);
+    let result;
+    try {
+      result = await uazapi.getInstanceStatus(cfg.uazapiInstanceToken);
+    } catch (err) {
+      if (!uazapi.isStaleTokenError(err)) throw err;
+      // Token morto — limpa para o próximo "Conectar Bot" criar uma instância nova.
+      await db.saveConfig({ ...cfg, uazapiInstanceId: null, uazapiInstanceToken: null });
+      return res.json({ success: true, connected: false, qr: null, phone: null });
+    }
     const instance = result.instance || {};
 
     res.json({

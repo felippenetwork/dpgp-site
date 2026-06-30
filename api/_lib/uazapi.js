@@ -75,7 +75,16 @@ function setWebhook(token, url, events) {
   return call('/webhook', { method: 'POST', token, body: { url, enabled: true, events } });
 }
 
+// A instância pode ter sido apagada/expirada do lado da uazapi (ex: instâncias
+// não conectadas têm TTL) — nesse caso o token salvo no Supabase fica "morto"
+// e toda chamada com ele falha com 401/"Invalid token.". Detecta esse caso
+// para o caller poder recriar a instância em vez de só repassar o erro.
+function isStaleTokenError(err) {
+  return err?.status === 401 || /invalid token/i.test(err?.message || '');
+}
+
 module.exports = {
   createInstance, connectInstance, getInstanceStatus, disconnectInstance,
   deleteInstance, listGroups, sendText, sendMedia, setWebhook,
+  isStaleTokenError,
 };

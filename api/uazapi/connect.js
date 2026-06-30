@@ -13,18 +13,29 @@ module.exports = async (req, res) => {
     const cfg = await db.getConfig();
     let { uazapiInstanceId, uazapiInstanceToken } = cfg;
 
-    if (!uazapiInstanceToken) {
+    async function criarNovaInstancia() {
       const created = await uazapi.createInstance(`dpgp-${Date.now()}`);
       uazapiInstanceId    = created.instance?.id || created.instance?.token || null;
       uazapiInstanceToken = created.token;
-      await db.saveConfig({ ...cfg, uazapiInstanceId, uazapiInstanceToken });
+      await db.saveConfig({ ...await db.getConfig(), uazapiInstanceId, uazapiInstanceToken });
 
       const host = req.headers['x-forwarded-host'] || req.headers.host;
       uazapi.setWebhook(uazapiInstanceToken, `https://${host}/api/webhook/uazapi`, ['messages', 'connection'])
         .catch(() => {});
     }
 
-    const result = await uazapi.connectInstance(uazapiInstanceToken);
+    if (!uazapiInstanceToken) await criarNovaInstancia();
+
+    let result;
+    try {
+      result = await uazapi.connectInstance(uazapiInstanceToken);
+    } catch (err) {
+      // Token salvo está morto (instância expirou/foi apagada na uazapi) — recria.
+      if (!uazapi.isStaleTokenError(err)) throw err;
+      await criarNovaInstancia();
+      result = await uazapi.connectInstance(uazapiInstanceToken);
+    }
+
     const instance = result.instance || {};
 
     res.json({

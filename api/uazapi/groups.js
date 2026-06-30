@@ -10,7 +10,14 @@ module.exports = async (req, res) => {
       return res.status(503).json({ success: false, error: 'WhatsApp não conectado' });
     }
 
-    const { groups } = await uazapi.listGroups(cfg.uazapiInstanceToken);
+    let groups;
+    try {
+      ({ groups } = await uazapi.listGroups(cfg.uazapiInstanceToken));
+    } catch (err) {
+      if (!uazapi.isStaleTokenError(err)) throw err;
+      await db.saveConfig({ ...cfg, uazapiInstanceId: null, uazapiInstanceToken: null });
+      return res.status(503).json({ success: false, error: 'WhatsApp não conectado' });
+    }
     const list = (groups || [])
       .map(g => ({ jid: g.JID, name: g.Name || g.JID, participants: g.Participants?.length || 0 }))
       .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
