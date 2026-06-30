@@ -69,13 +69,15 @@ module.exports = async (req, res) => {
     const texto   = msgs[Math.floor(Math.random() * msgs.length)].trim();
     const delayMs = (cfg.ausenciaDelay || 25) * 1000;
 
-    await uazapi.sendText(cfg.uazapiInstanceToken, incoming.jid, texto, { delay: delayMs });
-
+    // Grava cooldown ANTES de enviar — evita que mensagens em sequência
+    // rápida passem pelo check antes da primeira resposta ser registrada.
     const novoCooldown = { ...cooldown, [incoming.jid]: new Date().toISOString() };
     for (const jid of Object.keys(novoCooldown)) {
       if (Date.now() - new Date(novoCooldown[jid]).getTime() > COOLDOWN_MS) delete novoCooldown[jid];
     }
     await db.saveConfig({ ...cfg, ausenciaCooldown: novoCooldown });
+
+    await uazapi.sendText(cfg.uazapiInstanceToken, incoming.jid, texto, { delay: delayMs });
     res.status(200).json({ ok: true });
 
   } catch {
