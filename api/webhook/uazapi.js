@@ -3,13 +3,12 @@ const uazapi = require('../_lib/uazapi');
 
 const COOLDOWN_MS = 60 * 60 * 1000;
 
-// uazapi entrega o payload em PascalCase — normaliza para camelCase
-// antes de processar, aceitando os dois formatos por segurança.
 function normalize(obj) {
-  if (!obj || typeof obj !== 'object') return obj;
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;
   const out = {};
   for (const [k, v] of Object.entries(obj)) {
-    out[k[0].toLowerCase() + k.slice(1)] = typeof v === 'object' && v !== null ? normalize(v) : v;
+    const key = k[0].toLowerCase() + k.slice(1);
+    out[key] = (v && typeof v === 'object' && !Array.isArray(v)) ? normalize(v) : v;
   }
   return out;
 }
@@ -48,20 +47,25 @@ module.exports = async (req, res) => {
     }
     body = body || {};
 
-    // Aceita camelCase e PascalCase
     const event = (body.event || body.Event || '').toLowerCase();
+    const rawData = body.data || body.Data;
+
+    // LOG DIAGNÓSTICO
+    console.log('[WH] event:', event, '| keys:', Object.keys(body).join(','));
+    console.log('[WH] data keys:', rawData ? Object.keys(rawData).join(',') : 'null');
+
     if (!event.startsWith('message')) return res.status(200).json({ ok: true });
 
-    const rawData = body.data || body.Data;
     const incoming = extractIncomingMessage(rawData);
+    console.log('[WH] incoming:', JSON.stringify(incoming));
+
     if (!incoming || incoming.fromMe || incoming.isGroup) return res.status(200).json({ ok: true });
 
     const cfg = await db.getConfig();
     if (!cfg.ausenciaAtivo || !cfg.uazapiInstanceToken) return res.status(200).json({ ok: true });
 
     const msgs = Array.isArray(cfg.ausenciaMensagens) && cfg.ausenciaMensagens.length
-      ? cfg.ausenciaMensagens
-      : (cfg.ausenciaMensagem ? [cfg.ausenciaMensagem] : []);
+      ? cfg.ausenciaMensagens : (cfg.ausenciaMensagem ? [cfg.ausenciaMensagem] : []);
     if (!msgs.length) return res.status(200).json({ ok: true });
 
     const cooldown = cfg.ausenciaCooldown || {};
@@ -71,16 +75,19 @@ module.exports = async (req, res) => {
     const texto   = msgs[Math.floor(Math.random() * msgs.length)].trim();
     const delayMs = (cfg.ausenciaDelay || 25) * 1000;
 
+    console.log('[WH] enviando para:', incoming.jid);
     await uazapi.sendText(cfg.uazapiInstanceToken, incoming.jid, texto, { delay: delayMs });
+    console.log('[WH] enviado OK');
 
     const novoCooldown = { ...cooldown, [incoming.jid]: new Date().toISOString() };
     for (const jid of Object.keys(novoCooldown)) {
       if (Date.now() - new Date(novoCooldown[jid]).getTime() > COOLDOWN_MS) delete novoCooldown[jid];
     }
     await db.saveConfig({ ...cfg, ausenciaCooldown: novoCooldown });
-
     res.status(200).json({ ok: true });
-  } catch {
+
+  } catch (err) {
+    console.log('[WH] ERRO:', err.message);
     res.status(200).json({ ok: true });
   }
 };
