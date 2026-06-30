@@ -13,6 +13,7 @@ function normalize(obj) {
   return out;
 }
 
+// Payload real da uazapi: body.message contém chatid, fromMe, isGroup, content
 function extractIncomingMessage(rawData) {
   if (!rawData) return null;
   const data = normalize(rawData);
@@ -32,7 +33,7 @@ function extractIncomingMessage(rawData) {
   if (!jid) return null;
 
   const fromMe  = !!(msg?.key?.fromMe ?? msg?.fromMe ?? false);
-  const isGroup = jid.endsWith('@g.us') || jid === 'status@broadcast';
+  const isGroup = !!(msg?.key?.isGroup ?? msg?.isGroup ?? jid.endsWith('@g.us') ?? false);
 
   return { jid, fromMe, isGroup };
 }
@@ -40,47 +41,33 @@ function extractIncomingMessage(rawData) {
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).end();
 
-  const debug = { step: 'start', jid: null, fromMe: null, isGroup: null, err: null };
   try {
     let body = req.body;
     if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
     body = body || {};
 
-    // Salva payload completo no Supabase para inspeção (síncrono)
-    const cfgSnap = await db.getConfig();
-    await db.saveConfig({ ...cfgSnap, _debugPayload: JSON.stringify(body).slice(0, 2000) });
-
-    debug.keys  = Object.keys(body).join('|');
-    debug.event = (body.event || body.Event || body.eventType || body.EventType || '').toLowerCase();
-    // body.message = mensagem real | body.chat = metadado CRM do contato (não usar para extração)
+    const event   = (body.event || body.Event || body.eventType || body.EventType || '').toLowerCase();
+    // body.message = mensagem real | body.chat = metadado CRM (não usar para extração)
     const rawData = body.data || body.Data || body.message || body.Message;
 
-    if (!debug.event.startsWith('message')) { debug.step = 'skip_event'; res.status(200).json({ ok: true }); return; }
+    if (!event.startsWith('message')) return res.status(200).json({ ok: true });
 
     const incoming = extractIncomingMessage(rawData);
-    debug.jid     = incoming?.jid || 'null';
-    debug.fromMe  = incoming?.fromMe;
-    debug.isGroup = incoming?.isGroup;
-
-    if (!incoming || incoming.fromMe || incoming.isGroup) { debug.step = 'skip_incoming'; res.status(200).json({ ok: true }); return; }
+    if (!incoming || incoming.fromMe || incoming.isGroup) return res.status(200).json({ ok: true });
 
     const cfg = await db.getConfig();
-    debug.ativo = cfg.ausenciaAtivo;
-
-    if (!cfg.ausenciaAtivo || !cfg.uazapiInstanceToken) { debug.step = 'skip_config'; res.status(200).json({ ok: true }); return; }
+    if (!cfg.ausenciaAtivo || !cfg.uazapiInstanceToken) return res.status(200).json({ ok: true });
 
     const msgs = Array.isArray(cfg.ausenciaMensagens) && cfg.ausenciaMensagens.length
       ? cfg.ausenciaMensagens : (cfg.ausenciaMensagem ? [cfg.ausenciaMensagem] : []);
-    if (!msgs.length) { debug.step = 'skip_nomsgs'; res.status(200).json({ ok: true }); return; }
+    if (!msgs.length) return res.status(200).json({ ok: true });
 
     const cooldown = cfg.ausenciaCooldown || {};
     const ultimo   = cooldown[incoming.jid] ? new Date(cooldown[incoming.jid]).getTime() : 0;
-    debug.cooldown = Date.now() - ultimo < COOLDOWN_MS;
-    if (debug.cooldown) { debug.step = 'skip_cooldown'; res.status(200).json({ ok: true }); return; }
+    if (Date.now() - ultimo < COOLDOWN_MS) return res.status(200).json({ ok: true });
 
     const texto   = msgs[Math.floor(Math.random() * msgs.length)].trim();
     const delayMs = (cfg.ausenciaDelay || 25) * 1000;
-    debug.step    = 'sending';
 
     await uazapi.sendText(cfg.uazapiInstanceToken, incoming.jid, texto, { delay: delayMs });
 
@@ -89,14 +76,9 @@ module.exports = async (req, res) => {
       if (Date.now() - new Date(novoCooldown[jid]).getTime() > COOLDOWN_MS) delete novoCooldown[jid];
     }
     await db.saveConfig({ ...cfg, ausenciaCooldown: novoCooldown });
-    debug.step = 'done';
     res.status(200).json({ ok: true });
 
-  } catch (err) {
-    debug.step = 'error';
-    debug.err  = err.message;
+  } catch {
     res.status(200).json({ ok: true });
-  } finally {
-    console.log('[WH]', JSON.stringify(debug));
   }
 };
