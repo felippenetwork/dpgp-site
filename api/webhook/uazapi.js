@@ -52,7 +52,8 @@ module.exports = async (req, res) => {
 
     debug.keys  = Object.keys(body).join('|');
     debug.event = (body.event || body.Event || body.eventType || body.EventType || '').toLowerCase();
-    const rawData = body.data || body.Data || body.chat || body.Chat || body.message || body.Message;
+    // body.message = mensagem real | body.chat = metadado CRM do contato (não usar para extração)
+    const rawData = body.data || body.Data || body.message || body.Message;
 
     if (!debug.event.startsWith('message')) { debug.step = 'skip_event'; res.status(200).json({ ok: true }); return; }
 
