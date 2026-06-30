@@ -47,7 +47,7 @@ module.exports = async (req, res) => {
     }
     body = body || {};
 
-    const event = (body.event || body.Event || '').toLowerCase();
+    const event = (body.event || body.Event || body.eventType || body.EventType || '').toLowerCase();
     const rawData = body.data || body.Data;
 
     // LOG DIAGNÓSTICO
