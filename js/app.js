@@ -90,20 +90,11 @@ async function checkBotStatus() {
   const text = document.getElementById('conn-text');
   if (!dot || !text) return;
 
-  const cfg = Store.getConfig();
-  const url = (cfg.botApiUrl || CONFIG.botApiUrl || '').replace(/\/$/, '');
-
-  if (!url) {
-    dot.className  = 'conn-dot';
-    text.textContent = 'Bot não configurado';
-    return;
-  }
-
   dot.className = 'conn-dot connecting';
   text.textContent = 'Verificando...';
 
   try {
-    const res = await fetch(`${url}/api/status`, { signal: AbortSignal.timeout(5000) });
+    const res = await fetch('/api/uazapi/status', { signal: AbortSignal.timeout(10000) });
     const data = await res.json();
     if (data.connected) {
       dot.className    = 'conn-dot connected';

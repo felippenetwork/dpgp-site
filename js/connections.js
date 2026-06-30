@@ -6,11 +6,6 @@ Auth.requireAuth();
 
 let qrInterval = null;
 
-function getBotUrl() {
-  const cfg = Store.getConfig();
-  return (cfg.botApiUrl || CONFIG.botApiUrl || '').replace(/\/$/, '');
-}
-
 function setStatus(state, text) {
   const badge = document.getElementById('conn-status-badge');
   const txtEl = document.getElementById('conn-status-text');
@@ -21,24 +16,15 @@ function setStatus(state, text) {
 }
 
 async function refreshStatus() {
-  const url = getBotUrl();
-  document.getElementById('configured-url').textContent = url || 'Não configurada';
-
-  if (!url) {
-    setStatus('disconnected', 'URL do Bot não configurada');
-    showDisconnectedUI();
-    return;
-  }
-
   setStatus('connecting', 'Verificando conexão...');
 
   try {
-    const res  = await fetch(`${url}/api/status`, { signal: AbortSignal.timeout(6000) });
+    const res  = await fetch('/api/uazapi/status', { signal: AbortSignal.timeout(15000) });
     const data = await res.json();
 
     if (data.connected) {
       setStatus('connected', 'Bot conectado');
-      showConnectedUI(data.phone || data.jid || '');
+      showConnectedUI(data.phone || '');
     } else if (data.qr) {
       setStatus('connecting', 'Aguardando scan do QR Code...');
       showQRUI(data.qr);
@@ -47,7 +33,7 @@ async function refreshStatus() {
       showDisconnectedUI();
     }
   } catch {
-    setStatus('disconnected', 'Bot offline / não acessível');
+    setStatus('disconnected', 'Erro ao verificar status');
     showDisconnectedUI();
   }
 }
@@ -89,20 +75,20 @@ function showQRUI(qrDataUrl) {
 }
 
 async function connectBot() {
-  const url = getBotUrl();
-  if (!url) {
-    toast('Configure a URL do bot em Configurações primeiro.', 'warning');
-    return;
-  }
-
   setStatus('connecting', 'Iniciando conexão...');
 
   try {
-    const res  = await fetch(`${url}/api/connect`, {
+    const res  = await fetch('/api/uazapi/connect', {
       method: 'POST',
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(25000),
     });
     const data = await res.json();
+
+    if (!data.success) {
+      toast(data.error || 'Erro ao iniciar conexão', 'error');
+      setStatus('disconnected', 'Erro de conexão');
+      return;
+    }
 
     if (data.qr) {
       setStatus('connecting', 'Escaneie o QR Code com seu WhatsApp');
@@ -113,22 +99,20 @@ async function connectBot() {
       showConnectedUI(data.phone || '');
       toast('Bot conectado com sucesso!', 'success');
     } else {
-      toast(data.error || 'Erro ao iniciar conexão', 'error');
+      toast('Aguardando QR Code...', 'info');
+      if (!qrInterval) qrInterval = setInterval(refreshStatus, 5000);
     }
   } catch {
-    toast('Não foi possível conectar ao servidor bot.', 'error');
+    toast('Não foi possível conectar à uazapi.', 'error');
     setStatus('disconnected', 'Erro de conexão');
   }
 }
 
 async function disconnectBot() {
-  const url = getBotUrl();
-  if (!url) return;
-
   if (!confirm('Deseja desconectar o bot do WhatsApp?')) return;
 
   try {
-    await fetch(`${url}/api/disconnect`, { method: 'POST', signal: AbortSignal.timeout(8000) });
+    await fetch('/api/uazapi/disconnect', { method: 'POST', signal: AbortSignal.timeout(15000) });
     toast('Bot desconectado.', 'warning');
     showDisconnectedUI();
     setStatus('disconnected', 'Bot desconectado');

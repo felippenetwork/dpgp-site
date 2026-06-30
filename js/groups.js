@@ -136,20 +136,13 @@ async function deleteGroup(id) {
 let _waGroups = [];
 
 async function loadFromWhatsApp() {
-  const cfg = Store.getConfig();
-  const url = (cfg.botApiUrl || '').replace(/\/$/, '');
-  if (!url) { toast('Configure a URL do servidor nas Configurações.', 'warning'); return; }
-
   document.getElementById('wa-backdrop').classList.remove('hidden');
   document.getElementById('wa-loading').classList.remove('hidden');
   document.getElementById('wa-content').classList.add('hidden');
   document.getElementById('wa-error').classList.add('hidden');
 
   try {
-    const res  = await fetch(`${url}/api/whatsapp-groups`, {
-      headers: { 'X-Api-Key': cfg.apiKey || 'dpgp-secret-key' },
-      signal:  AbortSignal.timeout(20000),
-    });
+    const res  = await fetch('/api/uazapi/groups', { signal: AbortSignal.timeout(20000) });
     const data = await res.json();
 
     if (!data.success) throw new Error(data.error || 'Erro ao carregar grupos');

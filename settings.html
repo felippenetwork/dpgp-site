@@ -159,37 +159,13 @@
         </div>
       </div>
 
-      <!-- Bot API -->
-      <div class="card mb-4">
-        <div class="card-header">
-          <span class="card-title">🔌 Integração com o Servidor Bot (BronxyHost)</span>
-        </div>
-        <div class="form-group">
-          <label class="form-label">URL do servidor API</label>
-          <input type="url" id="cfg-bot-url" class="form-control" placeholder="http://seu-ip-bronxyhost:3001">
-          <div class="form-hint">IP ou domínio do servidor BronxyHost onde o DPGP-API está rodando. Ex: <code style="background:var(--bg-hover);padding:1px 5px;border-radius:3px">http://123.45.67.89:3001</code></div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">API Key (chave de segurança)</label>
-          <input type="text" id="cfg-api-key" class="form-control" placeholder="dpgp-secret-key">
-          <div class="form-hint">Mesma API Key configurada na variável <code style="background:var(--bg-hover);padding:1px 5px;border-radius:3px">API_KEY</code> do servidor. Padrão: <code style="background:var(--bg-hover);padding:1px 5px;border-radius:3px">dpgp-secret-key</code></div>
-        </div>
-        <div class="form-group">
-          <button class="btn btn-secondary" onclick="testConnection()" id="btn-test-conn">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            Testar conexão
-          </button>
-          <span id="conn-test-result" style="font-size:13px;margin-left:12px"></span>
-        </div>
-      </div>
-
       <!-- Ações do Bot -->
       <div class="card mb-4" style="border-color:rgba(37,211,102,.2)">
         <div class="card-header">
           <span class="card-title" style="color:var(--accent)">🎯 Ações do Bot</span>
         </div>
         <p style="font-size:13.5px;color:var(--text-2);margin-bottom:16px">
-          O bot lê templates, grupos e configurações diretamente do banco de dados — não é necessário sincronizar. Use o botão abaixo para disparar manualmente.
+          O bot conecta direto via uazapi e lê templates, grupos e configurações do banco de dados. Use o botão abaixo para disparar manualmente.
         </p>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
           <button class="btn btn-primary" onclick="triggerDispatch()">

@@ -2,6 +2,12 @@
   "rewrites": [
     { "source": "/", "destination": "/index.html" }
   ],
+  "functions": {
+    "api/cron/dispatch-tick.js": { "maxDuration": 60 },
+    "api/dispatch/trigger.js":   { "maxDuration": 60 },
+    "api/uazapi/connect.js":     { "maxDuration": 30 },
+    "api/webhook/uazapi.js":     { "maxDuration": 60 }
+  },
   "headers": [
     {
       "source": "/(.*)",
