@@ -48,7 +48,7 @@ module.exports = async (req, res) => {
 
     const event   = (body.event || body.Event || body.eventType || body.EventType || '').toLowerCase();
     const rawData = body.data || body.Data;
-    logMsg = 'event='+event+' dataKeys='+(rawData ? Object.keys(rawData).join(',') : 'null');
+    logMsg = 'ALL_KEYS='+Object.keys(body).join('|')+' event='+event+' dataKeys='+(rawData ? Object.keys(rawData).join(',') : 'null');
 
     if (!event.startsWith('message')) { console.log('[WH] SKIP '+logMsg); return res.status(200).json({ ok: true }); }
 
