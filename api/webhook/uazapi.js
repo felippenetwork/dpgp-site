@@ -1,90 +1,70 @@
 const db     = require('../_lib/db');
 const uazapi = require('../_lib/uazapi');
 
-const COOLDOWN_MS  = 60 * 60 * 1000; // 1h por contato
-const MAX_DELAY_MS = 50000;
-
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+const COOLDOWN_MS = 60 * 60 * 1000; // 1h por contato
 
 // Extrai os campos relevantes do payload de mensagem da uazapi.
-// Estrutura confirmada: { key: {remoteJid, fromMe}, message: {conversation|...}, pushName }
-// Também tenta formatos alternativos (arrays, camelCase/PascalCase).
+// Estrutura confirmada: { key:{remoteJid,fromMe}, message:{conversation|...} }
 function extractIncomingMessage(data) {
   if (!data) return null;
 
   // Formato principal: data é o objeto da mensagem diretamente
-  // { key: { remoteJid, fromMe }, message: { conversation } }
   let msg = data;
-
-  // Formato alternativo: data.messages = [{...}] ou data.message = {...}
   if (Array.isArray(data.messages) && data.messages.length) msg = data.messages[0];
   else if (data.message && typeof data.message === 'object' && data.message.key) msg = data.message;
 
-  // Extrai JID — tenta múltiplos paths conhecidos
   const jid =
-    msg?.key?.remoteJid    ||
-    msg?.key?.RemoteJid    ||
-    msg?.remoteJid         ||
-    msg?.chatid            ||
-    msg?.chatId            ||
-    msg?.from              ||
+    msg?.key?.remoteJid ||
+    msg?.key?.RemoteJid ||
+    msg?.remoteJid      ||
+    msg?.chatid         ||
+    msg?.chatId         ||
+    msg?.from           ||
     null;
 
   if (!jid) return null;
 
-  const fromMe = !!(
-    msg?.key?.fromMe    ??
-    msg?.key?.FromMe    ??
-    msg?.fromMe         ??
-    false
-  );
-
+  const fromMe = !!(msg?.key?.fromMe ?? msg?.key?.FromMe ?? msg?.fromMe ?? false);
   const isGroup = jid.endsWith('@g.us') || jid === 'status@broadcast';
 
-  const text =
-    msg?.message?.conversation                        ||
-    msg?.message?.extendedTextMessage?.text           ||
-    msg?.message?.imageMessage?.caption               ||
-    msg?.text || msg?.body || msg?.conversation       ||
-    '';
-
-  return { jid, fromMe, isGroup, text };
+  return { jid, fromMe, isGroup };
 }
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).end();
 
-  // Responde 200 IMEDIATAMENTE — a uazapi tem timeout curto para entrega do webhook.
-  // O sleep + envio da mensagem acontece depois, enquanto a function ainda está viva.
-  res.status(200).json({ ok: true });
-
   try {
-    const body = req.body || {};
-    const event = body.event || '';
+    // Garante parsing mesmo se Content-Type não for application/json
+    let body = req.body;
+    if (typeof body === 'string') {
+      try { body = JSON.parse(body); } catch { body = {}; }
+    }
+    body = body || {};
 
-    // Aceita 'messages', 'messages_upsert', 'message' etc.
-    if (!event.startsWith('message')) return;
+    const event = body.event || '';
+    if (!event.startsWith('message')) return res.status(200).json({ ok: true });
 
     const incoming = extractIncomingMessage(body.data);
-    if (!incoming || incoming.fromMe || incoming.isGroup) return;
+    if (!incoming || incoming.fromMe || incoming.isGroup) return res.status(200).json({ ok: true });
 
     const cfg = await db.getConfig();
-    if (!cfg.ausenciaAtivo || !cfg.uazapiInstanceToken) return;
+    if (!cfg.ausenciaAtivo || !cfg.uazapiInstanceToken) return res.status(200).json({ ok: true });
 
     const msgs = Array.isArray(cfg.ausenciaMensagens) && cfg.ausenciaMensagens.length
       ? cfg.ausenciaMensagens
       : (cfg.ausenciaMensagem ? [cfg.ausenciaMensagem] : []);
-    if (!msgs.length) return;
+    if (!msgs.length) return res.status(200).json({ ok: true });
 
     const cooldown = cfg.ausenciaCooldown || {};
     const ultimo = cooldown[incoming.jid] ? new Date(cooldown[incoming.jid]).getTime() : 0;
-    if (Date.now() - ultimo < COOLDOWN_MS) return;
+    if (Date.now() - ultimo < COOLDOWN_MS) return res.status(200).json({ ok: true });
 
-    const texto   = msgs[Math.floor(Math.random() * msgs.length)].trim();
-    const delayMs = Math.min((cfg.ausenciaDelay || 25) * 1000, MAX_DELAY_MS);
+    const texto    = msgs[Math.floor(Math.random() * msgs.length)].trim();
+    const delayMs  = (cfg.ausenciaDelay || 25) * 1000;
 
-    await sleep(delayMs);
-    await uazapi.sendText(cfg.uazapiInstanceToken, incoming.jid, texto);
+    // Sem sleep na function — passa o delay para a uazapi que simula o
+    // "digitando..." nativamente. Assim respondemos antes do timeout do webhook.
+    await uazapi.sendText(cfg.uazapiInstanceToken, incoming.jid, texto, { delay: delayMs });
 
     const novoCooldown = { ...cooldown, [incoming.jid]: new Date().toISOString() };
     for (const jid of Object.keys(novoCooldown)) {
@@ -92,5 +72,8 @@ module.exports = async (req, res) => {
     }
     await db.saveConfig({ ...cfg, ausenciaCooldown: novoCooldown });
 
-  } catch { /* silencioso — não afeta resposta já enviada */ }
+    res.status(200).json({ ok: true });
+  } catch {
+    res.status(200).json({ ok: true });
+  }
 };
