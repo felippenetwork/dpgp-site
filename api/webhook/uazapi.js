@@ -40,7 +40,7 @@ function extractIncomingMessage(rawData) {
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).end();
 
-  const debug = { step: 'start', jid: null, fromMe: null, isGroup: null, err: null };
+  const debug = { step: 'start', jid: null, fromMe: null, isGroup: null, raw: null, err: null };
   try {
     let body = req.body;
     if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
@@ -50,7 +50,7 @@ module.exports = async (req, res) => {
     debug.event = (body.event || body.Event || body.eventType || body.EventType || '').toLowerCase();
 
     const rawData = body.data || body.Data || body.chat || body.Chat || body.message || body.Message;
-    debug.rawDataKeys = rawData ? Object.keys(rawData).join('|') : 'null';
+    debug.raw = JSON.stringify(rawData).slice(0, 120);
     debug.step = 'event_check';
 
     if (!debug.event.startsWith('message')) { debug.step = 'skip_event'; res.status(200).json({ ok: true }); return; }
