@@ -51,6 +51,8 @@ module.exports = async (req, res) => {
 
     const rawData = body.data || body.Data || body.chat || body.Chat || body.message || body.Message;
     debug.raw = JSON.stringify(rawData).slice(0, 120);
+    // SALVA payload no Supabase para inspeção sem truncamento
+    db.getConfig().then(c => db.saveConfig({ ...c, _debugPayload: JSON.stringify(body).slice(0, 2000) })).catch(()=>{});
     debug.step = 'event_check';
 
     if (!debug.event.startsWith('message')) { debug.step = 'skip_event'; res.status(200).json({ ok: true }); return; }
