@@ -40,20 +40,19 @@ function extractIncomingMessage(rawData) {
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).end();
 
-  const debug = { step: 'start', jid: null, fromMe: null, isGroup: null, raw: null, err: null };
+  const debug = { step: 'start', jid: null, fromMe: null, isGroup: null, err: null };
   try {
     let body = req.body;
     if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
     body = body || {};
 
+    // Salva payload completo no Supabase para inspeção (síncrono)
+    const cfgSnap = await db.getConfig();
+    await db.saveConfig({ ...cfgSnap, _debugPayload: JSON.stringify(body).slice(0, 2000) });
+
     debug.keys  = Object.keys(body).join('|');
     debug.event = (body.event || body.Event || body.eventType || body.EventType || '').toLowerCase();
-
     const rawData = body.data || body.Data || body.chat || body.Chat || body.message || body.Message;
-    debug.raw = JSON.stringify(rawData).slice(0, 120);
-    // SALVA payload no Supabase para inspeção sem truncamento
-    db.getConfig().then(c => db.saveConfig({ ...c, _debugPayload: JSON.stringify(body).slice(0, 2000) })).catch(()=>{});
-    debug.step = 'event_check';
 
     if (!debug.event.startsWith('message')) { debug.step = 'skip_event'; res.status(200).json({ ok: true }); return; }
 
@@ -61,14 +60,11 @@ module.exports = async (req, res) => {
     debug.jid     = incoming?.jid || 'null';
     debug.fromMe  = incoming?.fromMe;
     debug.isGroup = incoming?.isGroup;
-    debug.step    = 'incoming_check';
 
     if (!incoming || incoming.fromMe || incoming.isGroup) { debug.step = 'skip_incoming'; res.status(200).json({ ok: true }); return; }
 
     const cfg = await db.getConfig();
     debug.ativo = cfg.ausenciaAtivo;
-    debug.msgs  = cfg.ausenciaMensagens?.length;
-    debug.step  = 'config_check';
 
     if (!cfg.ausenciaAtivo || !cfg.uazapiInstanceToken) { debug.step = 'skip_config'; res.status(200).json({ ok: true }); return; }
 
@@ -76,11 +72,9 @@ module.exports = async (req, res) => {
       ? cfg.ausenciaMensagens : (cfg.ausenciaMensagem ? [cfg.ausenciaMensagem] : []);
     if (!msgs.length) { debug.step = 'skip_nomsgs'; res.status(200).json({ ok: true }); return; }
 
-    const cooldown   = cfg.ausenciaCooldown || {};
-    const ultimo     = cooldown[incoming.jid] ? new Date(cooldown[incoming.jid]).getTime() : 0;
-    debug.cooldown   = Date.now() - ultimo < COOLDOWN_MS;
-    debug.step       = 'cooldown_check';
-
+    const cooldown = cfg.ausenciaCooldown || {};
+    const ultimo   = cooldown[incoming.jid] ? new Date(cooldown[incoming.jid]).getTime() : 0;
+    debug.cooldown = Date.now() - ultimo < COOLDOWN_MS;
     if (debug.cooldown) { debug.step = 'skip_cooldown'; res.status(200).json({ ok: true }); return; }
 
     const texto   = msgs[Math.floor(Math.random() * msgs.length)].trim();
@@ -88,7 +82,6 @@ module.exports = async (req, res) => {
     debug.step    = 'sending';
 
     await uazapi.sendText(cfg.uazapiInstanceToken, incoming.jid, texto, { delay: delayMs });
-    debug.step = 'sent';
 
     const novoCooldown = { ...cooldown, [incoming.jid]: new Date().toISOString() };
     for (const jid of Object.keys(novoCooldown)) {
